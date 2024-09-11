@@ -23,6 +23,7 @@ namespace KeyboardTrackingApp
         private DispatcherTimer _processCheckTimer;
         private int? _notepadProcessId;
         private SuggestionsControl _suggestionsControl;
+        private DispatcherTimer _contentSyncTimer;
 
         [DllImport("user32.dll")]
         public static extern IntPtr GetForegroundWindow();
@@ -82,6 +83,13 @@ namespace KeyboardTrackingApp
             };
             _processCheckTimer.Tick += ProcessCheckTimer_Tick;
             _processCheckTimer.Start();
+
+            _contentSyncTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(1)
+            };
+            _contentSyncTimer.Tick += ContentSyncTimer_Tick;
+            _contentSyncTimer.Start();
         }
 
         private void WindowCheckTimer_Tick(object sender , EventArgs e)
@@ -337,6 +345,40 @@ namespace KeyboardTrackingApp
         {
             keybd_event((byte)key , 0 , 0 , UIntPtr.Zero);
             keybd_event((byte)key , 0 , KEYEVENTF_KEYUP , UIntPtr.Zero);
+        }
+        private void ContentSyncTimer_Tick(object sender , EventArgs e)
+        {
+            if (_notepadProcessId.HasValue)
+            {
+                string notepadContent = GetNotepadContent();
+                if (notepadContent != _allText.ToString())
+                {
+                    _allText.Clear();
+                    _allText.Append(notepadContent);
+                    _currentWord.Clear();
+                    Dispatcher.Invoke(() =>
+                    {
+                        HighlightTeh();
+                    });
+                }
+            }
+        }
+
+        private string GetNotepadContent()
+        {
+            IntPtr notepadHandle = GetForegroundWindow();
+            IntPtr editHandle = FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
+            if (editHandle != IntPtr.Zero)
+            {
+                int length = (int)SendMessage(editHandle , WM_GETTEXTLENGTH , IntPtr.Zero , null);
+                if (length > 0)
+                {
+                    StringBuilder sb = new StringBuilder(length + 1);
+                    SendMessage(editHandle , WM_GETTEXT , (IntPtr)sb.Capacity , sb);
+                    return sb.ToString();
+                }
+            }
+            return string.Empty;
         }
     }
 
