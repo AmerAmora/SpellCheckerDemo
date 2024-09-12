@@ -9,6 +9,8 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using Keys = System.Windows.Forms.Keys;
 using System.Windows.Threading;
+using System.Numerics;
+using SpellCheckerDemo;
 
 namespace KeyboardTrackingApp
 {
@@ -24,6 +26,7 @@ namespace KeyboardTrackingApp
         private int? _notepadProcessId;
         private SuggestionsControl _suggestionsControl;
         private DispatcherTimer _contentSyncTimer;
+        private FloatingPointWindow _floatingPoint;
 
         [DllImport("user32.dll")]
         public static extern IntPtr GetForegroundWindow();
@@ -92,6 +95,9 @@ namespace KeyboardTrackingApp
             };
             _contentSyncTimer.Tick += ContentSyncTimer_Tick;
             _contentSyncTimer.Start();
+            _floatingPoint = new FloatingPointWindow();
+            _floatingPoint.Show();
+            this.Hide();
         }
 
         private void WindowCheckTimer_Tick(object sender , EventArgs e)
@@ -390,6 +396,12 @@ namespace KeyboardTrackingApp
             {
                 Console.WriteLine("Arabic keyboard layout is active.");
             }
+        }
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            base.OnClosing(e);
+            _floatingPoint.Close();
         }
     }
 
