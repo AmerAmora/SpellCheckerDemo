@@ -9,10 +9,12 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using Keys = System.Windows.Forms.Keys;
 using System.Windows.Threading;
+using Microsoft.Office.Interop.Word;
+using Application = Microsoft.Office.Interop.Word.Application;
 
 namespace KeyboardTrackingApp
 {
-    public partial class MainWindow : Window
+    public partial class MainWindow : System.Windows.Window
     {
         private GlobalKeyboardHook _keyboardHook;
         private StringBuilder _currentWord = new StringBuilder();
@@ -22,6 +24,7 @@ namespace KeyboardTrackingApp
         private DispatcherTimer _windowCheckTimer;
         private DispatcherTimer _processCheckTimer;
         private int? _notepadProcessId;
+        private int? _microsoftWordProcessId;
         private SuggestionsControl _suggestionsControl;
         private DispatcherTimer _contentSyncTimer;
 
@@ -112,6 +115,11 @@ namespace KeyboardTrackingApp
                         _notepadProcessId = GetProcessId(foregroundWindow);
                         ReadWindowContent(foregroundWindow);
                     }
+                    else if (IsMicroSoftWord (newWindowTitle))
+                    {
+                        _microsoftWordProcessId = GetProcessId(foregroundWindow);
+                        ReadWordContent();
+                    }
                     else
                     {
                         _notepadProcessId = null;
@@ -129,6 +137,15 @@ namespace KeyboardTrackingApp
                 {
                     _allText.Clear();
                     _notepadProcessId = null;
+                }
+            }
+            else if(_microsoftWordProcessId.HasValue){
+
+                var wordProcess = Process.GetProcesses().FirstOrDefault(p => p.Id == _microsoftWordProcessId.Value);
+                if (wordProcess == null)
+                {
+                    _allText.Clear();
+                    _microsoftWordProcessId = null;
                 }
             }
         }
@@ -152,6 +169,11 @@ namespace KeyboardTrackingApp
             return windowTitle.EndsWith(".txt - Notepad") ||
                    windowTitle.Equals("Untitled - Notepad") ||
                    windowTitle.EndsWith("Notepad");
+        }
+
+        private bool IsMicroSoftWord(string windowTitle)
+        {
+            return windowTitle.EndsWith(" - Word");
         }
 
         private void ReadWindowContent(IntPtr notepadHandle)
@@ -187,6 +209,58 @@ namespace KeyboardTrackingApp
             catch (Exception ex)
             {
                 MessageBox.Show($"Error reading Notepad content: {ex.Message}");
+            }
+        }
+
+        private void ReadWordContent()
+        {
+            Application wordApp = null;
+            Document activeDocument = null;
+
+            try
+            {
+                // Attempt to get the existing instance of Word
+                try
+                {
+                    wordApp = (Application)SpellCheckerDemo.ReplaceMarshall.GetActiveObject("Word.Application");
+                }
+                catch (COMException)
+                {
+                    Console.WriteLine("Microsoft Word is not running.");
+                    return;
+                }
+
+                // Access the active Word document
+                if (wordApp != null && wordApp.Documents.Count > 0)
+                {
+                    activeDocument = wordApp.ActiveDocument;
+                    StringBuilder sb = new StringBuilder();
+
+                    // Loop through each paragraph in the document
+                    foreach (Microsoft.Office.Interop.Word.Paragraph paragraph in activeDocument.Paragraphs)
+                    {
+                        sb.AppendLine(paragraph.Range.Text);
+                    }
+
+                    _allText.Clear();
+                    _allText.Append(sb.ToString());
+                    _currentWord.Clear();
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        HighlightTeh(); // Custom method to highlight specific words
+                    });
+
+                    Console.WriteLine("Read content from Word: " + _allText.ToString());
+                }
+                else
+                {
+                    Console.WriteLine("No active Word document found.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error reading Word content: {ex.Message}");
             }
         }
 
@@ -348,9 +422,17 @@ namespace KeyboardTrackingApp
             keybd_event((byte)key , 0 , 0 , UIntPtr.Zero);
             keybd_event((byte)key , 0 , KEYEVENTF_KEYUP , UIntPtr.Zero);
         }
-        private void ContentSyncTimer_Tick(object sender , EventArgs e)
+        private void ContentSyncTimer_Tick(object sender, EventArgs e)
         {
-            if (_notepadProcessId.HasValue)
+            IntPtr foregroundWindow = GetForegroundWindow();
+
+            _lastActiveWindowHandle = foregroundWindow;
+            StringBuilder sb = new StringBuilder(256); // This should now properly handle Arabic text
+            GetWindowText(foregroundWindow, sb, 256);
+            string newWindowTitle = sb.ToString();
+            var isnotePad = IsNotepad(newWindowTitle);
+            var isword = IsMicroSoftWord(newWindowTitle);
+            if (isnotePad)
             {
                 string notepadContent = GetNotepadContent();
                 if (notepadContent != _allText.ToString())
@@ -364,24 +446,77 @@ namespace KeyboardTrackingApp
                     });
                 }
             }
+
+            if (isword)
+            {
+                string microsoftWord = GetMicrosoftWordContent();
+                if (microsoftWord != _allText.ToString())
+                {
+                    _allText.Clear();
+                    _allText.Append(microsoftWord);
+                    _currentWord.Clear();
+                    Dispatcher.Invoke(() =>
+                    {
+                        HighlightTeh();
+                    });
+                }
+            }
+
         }
 
         private string GetNotepadContent()
         {
             IntPtr notepadHandle = GetForegroundWindow();
-            IntPtr editHandle = FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
+            IntPtr editHandle = FindWindowEx(notepadHandle, IntPtr.Zero, "Edit", null);
             if (editHandle != IntPtr.Zero)
             {
-                int length = (int)SendMessage(editHandle , WM_GETTEXTLENGTH , IntPtr.Zero , null);
+                int length = (int)SendMessage(editHandle, WM_GETTEXTLENGTH, IntPtr.Zero, null);
                 if (length > 0)
                 {
                     StringBuilder sb = new StringBuilder(length + 1);
-                    SendMessage(editHandle , WM_GETTEXT , (IntPtr)sb.Capacity , sb);
+                    SendMessage(editHandle, WM_GETTEXT, (IntPtr)sb.Capacity, sb);
                     return sb.ToString();
                 }
             }
             return string.Empty;
         }
+
+        private string GetMicrosoftWordContent()
+        {
+            try{ 
+                Application wordApp = null;
+                Document activeDocument = null;
+                try
+                {
+                    wordApp = (Application)SpellCheckerDemo.ReplaceMarshall.GetActiveObject("Word.Application");
+                }
+                catch (COMException)
+                {
+                    Console.WriteLine("Microsoft Word is not running.");
+                    return null;
+                }
+
+                // Access the active Word document
+                if (wordApp != null && wordApp.Documents.Count > 0)
+                {
+                    activeDocument = wordApp.ActiveDocument;
+                    StringBuilder sb = new StringBuilder();
+
+                    // Loop through each paragraph in the document
+                    foreach (Microsoft.Office.Interop.Word.Paragraph paragraph in activeDocument.Paragraphs)
+                    {
+                        sb.AppendLine(paragraph.Range.Text);
+                    }
+                    return sb.ToString();
+                }
+            }
+            catch(Exception){
+                Console.WriteLine("Microsoft Word is not running.");
+            }
+            return null;
+
+        }
+
         private void CheckKeyboardLayout()
         {
             IntPtr layout = GetKeyboardLayout(0); // 0 means to get the layout of the current thread.
