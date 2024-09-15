@@ -3,24 +3,36 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media.Media3D;
+using System.Windows.Media;
 using System.Windows.Threading;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TrayNotify;
 
 namespace SpellCheckerDemo
 {
     public partial class FloatingPointWindow : Window
     {
+        private bool isUserDragging = false;
+
         public FloatingPointWindow()
         {
             InitializeComponent();
             this.Topmost = true;
 
             // Allow the window to be dragged
-            this.MouseLeftButtonDown += (s , e) => this.DragMove();
+            this.MouseLeftButtonDown += (s , e) =>
+            {
+                isUserDragging = true;
+                this.DragMove();
+            };
 
-            // Toggle main window visibility on click
-            this.MouseLeftButtonUp += ToggleMainWindowVisibility;
+            this.MouseDoubleClick += (s , e) =>
+            {
+                isUserDragging = false;
+                ToggleMainWindowVisibility(s , e);
+            };
 
-            SetupCaretTracking(); // Start caret tracking
+            SetupCaretTracking();
         }
 
         private void ToggleMainWindowVisibility(object sender , MouseButtonEventArgs e)
@@ -37,20 +49,20 @@ namespace SpellCheckerDemo
             }
         }
 
-        // Set up caret tracking
         private void SetupCaretTracking()
         {
             DispatcherTimer timer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(100) // Adjust the interval as needed
+                Interval = TimeSpan.FromMilliseconds(100)
             };
             timer.Tick += Timer_Tick;
             timer.Start();
         }
 
-        // Track the caret position in external applications
         private void Timer_Tick(object sender , EventArgs e)
         {
+            if (isUserDragging) return; // Don't update position if user is dragging
+
             IntPtr foregroundWindow = NativeMethods.GetForegroundWindow();
             uint processId;
             uint threadId = NativeMethods.GetWindowThreadProcessId(foregroundWindow , out processId);
@@ -59,14 +71,12 @@ namespace SpellCheckerDemo
             if (NativeMethods.GetGUIThreadInfo(threadId , ref guiThreadInfo))
             {
                 NativeMethods.Rectangle caretRect = guiThreadInfo.rcCaret;
-                // Convert to screen coordinates
                 NativeMethods.POINT screenPoint;
                 screenPoint.X = caretRect.Left;
                 screenPoint.Y = caretRect.Top;
                 NativeMethods.ClientToScreen(guiThreadInfo.hwndCaret , ref screenPoint);
-                // Set the floating window position
-                this.Left = screenPoint.X + 10; // Adjust offset based on icon size and DPI
-                this.Top = screenPoint.Y + 10;  // Adjust offset based on icon size and DPI
+                this.Left = screenPoint.X + 10;
+                this.Top = screenPoint.Y + 10;
             }
         }
     }
