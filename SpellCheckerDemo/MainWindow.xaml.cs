@@ -27,6 +27,7 @@ namespace KeyboardTrackingApp
         private SuggestionsControl _suggestionsControl;
         private DispatcherTimer _contentSyncTimer;
         private FloatingPointWindow _floatingPoint;
+        private OverlayWindow _overlay;
 
         [DllImport("user32.dll")]
         public static extern IntPtr GetForegroundWindow();
@@ -54,14 +55,42 @@ namespace KeyboardTrackingApp
 
         [DllImport("user32.dll" , SetLastError = true)]
         private static extern IntPtr FindWindowEx(IntPtr parentHandle , IntPtr childAfter , string lpszClass , string lpszWindow);
+
         [DllImport("user32.dll")]
         public static extern IntPtr GetKeyboardLayout(uint idThread);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        static extern bool GetWindowRect(IntPtr hWnd , out RECT lpRect);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        static extern bool GetClientRect(IntPtr hWnd , out RECT lpRect);
+
+        [DllImport("user32.dll")]
+        static extern bool ClientToScreen(IntPtr hWnd , ref POINT lpPoint);
 
         private const uint WM_GETTEXT = 0x000D;
         private const uint WM_GETTEXTLENGTH = 0x000E;
         private const int WM_KEYDOWN = 0x0100;
         private const int WM_KEYUP = 0x0101;
         private const int KEYEVENTF_KEYUP = 0x0002;
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct POINT
+        {
+            public int X;
+            public int Y;
+        }
 
         public MainWindow()
         {
@@ -77,7 +106,7 @@ namespace KeyboardTrackingApp
 
             _windowCheckTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(500)
+                Interval = TimeSpan.FromMilliseconds(100)
             };
             _windowCheckTimer.Tick += WindowCheckTimer_Tick;
             _windowCheckTimer.Start();
@@ -95,8 +124,13 @@ namespace KeyboardTrackingApp
             };
             _contentSyncTimer.Tick += ContentSyncTimer_Tick;
             _contentSyncTimer.Start();
+
             _floatingPoint = new FloatingPointWindow();
             _floatingPoint.Show();
+
+            _overlay = new OverlayWindow();
+            _overlay.Show();
+
             this.Hide();
         }
 
@@ -106,7 +140,7 @@ namespace KeyboardTrackingApp
             if (foregroundWindow != _lastActiveWindowHandle)
             {
                 _lastActiveWindowHandle = foregroundWindow;
-                StringBuilder sb = new StringBuilder(256); // This should now properly handle Arabic text
+                StringBuilder sb = new StringBuilder(256);
                 GetWindowText(foregroundWindow , sb , 256);
                 string newWindowTitle = sb.ToString();
 
@@ -123,6 +157,21 @@ namespace KeyboardTrackingApp
                         _notepadProcessId = null;
                     }
                 }
+
+                UpdateOverlayPosition();
+                CheckForIncorrectWords();
+            }
+        }
+
+        private void UpdateOverlayPosition()
+        {
+            RECT rect;
+            if (GetWindowRect(_lastActiveWindowHandle , out rect))
+            {
+                _overlay.Left = rect.Left;
+                _overlay.Top = rect.Top;
+                _overlay.Width = rect.Right - rect.Left;
+                _overlay.Height = rect.Bottom - rect.Top;
             }
         }
 
@@ -180,6 +229,7 @@ namespace KeyboardTrackingApp
                         Dispatcher.Invoke(() =>
                         {
                             HighlightTeh();
+                            CheckForIncorrectWords();
                         });
 
                         Console.WriteLine("Read content from Notepad: " + _allText.ToString());
@@ -222,6 +272,7 @@ namespace KeyboardTrackingApp
             Dispatcher.Invoke(() =>
             {
                 HighlightTeh();
+                CheckForIncorrectWords();
             });
         }
 
@@ -285,6 +336,7 @@ namespace KeyboardTrackingApp
             Dispatcher.Invoke(() =>
             {
                 HighlightTeh();
+                CheckForIncorrectWords();
                 _suggestionsControl.SetSuggestion(null);
                 SuggestionsPopup.IsOpen = false;
             });
@@ -310,6 +362,29 @@ namespace KeyboardTrackingApp
                     };
                     CurrentWordTextBlock.Inlines.Add(incorrectWord);
                 }
+            }
+        }
+
+        private void CheckForIncorrectWords()
+        {
+            string text = _allText.ToString();
+            int index = text.LastIndexOf("teh" , StringComparison.OrdinalIgnoreCase);
+            if (index != -1)
+            {
+                RECT clientRect;
+                GetClientRect(_lastActiveWindowHandle , out clientRect);
+
+                POINT point = new POINT { X = 0 , Y = 0 };
+                ClientToScreen(_lastActiveWindowHandle , ref point);
+
+                // Calculate the position of "teh"
+                var textRect = new Rect(point.X + index * 8 , point.Y , 24 , 20); // Assuming 8px per character and 20px height
+
+                _overlay.DrawUnderline(textRect);
+            }
+            else
+            {
+                _overlay.DrawUnderline(new Rect(0 , 0 , 0 , 0)); // Clear the underline
             }
         }
 
@@ -354,6 +429,7 @@ namespace KeyboardTrackingApp
             keybd_event((byte)key , 0 , 0 , UIntPtr.Zero);
             keybd_event((byte)key , 0 , KEYEVENTF_KEYUP , UIntPtr.Zero);
         }
+
         private void ContentSyncTimer_Tick(object sender , EventArgs e)
         {
             if (_notepadProcessId.HasValue)
@@ -367,6 +443,7 @@ namespace KeyboardTrackingApp
                     Dispatcher.Invoke(() =>
                     {
                         HighlightTeh();
+                        CheckForIncorrectWords();
                     });
                 }
             }

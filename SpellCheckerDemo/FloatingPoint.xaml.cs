@@ -7,19 +7,21 @@ using System.Windows.Media.Media3D;
 using System.Windows.Media;
 using System.Windows.Threading;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TrayNotify;
+using System.Diagnostics;
 
 namespace SpellCheckerDemo
 {
     public partial class FloatingPointWindow : Window
     {
         private bool isUserDragging = false;
+        private static bool isAuthenticated = false;
+        private const string LoginUrl = "https://qalam.ai/auth/sign-in";
 
         public FloatingPointWindow()
         {
             InitializeComponent();
             this.Topmost = true;
 
-            // Allow the window to be dragged
             this.MouseLeftButtonDown += (s , e) =>
             {
                 isUserDragging = true;
@@ -29,13 +31,38 @@ namespace SpellCheckerDemo
             this.MouseDoubleClick += (s , e) =>
             {
                 isUserDragging = false;
-                ToggleMainWindowVisibility(s , e);
+                HandleDoubleClick(s , e);
             };
 
             SetupCaretTracking();
         }
 
-        private void ToggleMainWindowVisibility(object sender , MouseButtonEventArgs e)
+        private void HandleDoubleClick(object sender , MouseButtonEventArgs e)
+        {
+            if (!isAuthenticated)
+            {
+                OpenLoginPage();
+                isAuthenticated = true; // In a real application, set this after successful authentication
+            }
+            else
+            {
+                ToggleMainWindowVisibility();
+            }
+        }
+
+        private void OpenLoginPage()
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo(LoginUrl) { UseShellExecute = true });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Failed to open login page: {ex.Message}" , "Error" , MessageBoxButton.OK , MessageBoxImage.Error);
+            }
+        }
+
+        private void ToggleMainWindowVisibility()
         {
             if (Application.Current.MainWindow.IsVisible)
             {
@@ -61,7 +88,7 @@ namespace SpellCheckerDemo
 
         private void Timer_Tick(object sender , EventArgs e)
         {
-            if (isUserDragging) return; // Don't update position if user is dragging
+            if (isUserDragging) return;
 
             IntPtr foregroundWindow = NativeMethods.GetForegroundWindow();
             uint processId;
