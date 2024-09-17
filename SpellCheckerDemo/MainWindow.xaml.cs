@@ -1,13 +1,10 @@
 ﻿using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Documents;
 using Keys = System.Windows.Forms.Keys;
 using System.Windows.Threading;
 using SpellCheckerDemo;
-using System.Drawing;
 using Brushes = System.Windows.Media.Brushes;
 using Point = System.Drawing.Point;
 

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -21,20 +20,23 @@ namespace SpellCheckerDemo
         public OverlayWindow()
         {
             InitializeComponent();
+
+            // Make the window transparent and click-through
             Topmost = true;
             ShowInTaskbar = false;
-            AllowsTransparency = true;
-            WindowStyle = WindowStyle.None;
-            Background = Brushes.Transparent;
 
+            // Make the window click-through
             var hwnd = new WindowInteropHelper(this).Handle;
             var extendedStyle = Native.GetWindowLong(hwnd , Native.GWL_EXSTYLE);
-            Native.SetWindowLong(hwnd , Native.GWL_EXSTYLE , extendedStyle | Native.WS_EX_TRANSPARENT | Native.WS_EX_LAYERED);
+            Native.SetWindowLong(hwnd , Native.GWL_EXSTYLE , extendedStyle | Native.WS_EX_TRANSPARENT);
         }
 
         public void DrawUnderline(Rect textRect)
         {
+            // Clear previous drawings
             canvas.Children.Clear();
+
+            // Create a red line
             var line = new System.Windows.Shapes.Line
             {
                 X1 = textRect.Left ,
@@ -44,6 +46,7 @@ namespace SpellCheckerDemo
                 Stroke = Brushes.Red ,
                 StrokeThickness = 2
             };
+
             canvas.Children.Add(line);
         }
     }
@@ -52,12 +55,11 @@ namespace SpellCheckerDemo
     {
         public const int GWL_EXSTYLE = -20;
         public const int WS_EX_TRANSPARENT = 0x00000020;
-        public const int WS_EX_LAYERED = 0x00080000;
 
-        [DllImport("user32.dll")]
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
         public static extern int GetWindowLong(IntPtr hwnd , int index);
 
-        [DllImport("user32.dll")]
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
         public static extern int SetWindowLong(IntPtr hwnd , int index , int newStyle);
     }
 }

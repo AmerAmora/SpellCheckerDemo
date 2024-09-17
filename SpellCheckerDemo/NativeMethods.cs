@@ -48,6 +48,12 @@ public static class NativeMethods
     [DllImport("user32.dll" , SetLastError = true , CharSet = CharSet.Auto)]
     public static extern IntPtr SendMessage(IntPtr hWnd , int Msg , IntPtr wParam , IntPtr lParam);
 
+    [DllImport("user32.dll" , SetLastError = true)]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd , out uint processId);
+
+    [DllImport("user32.dll")]
+    public static extern bool GetGUIThreadInfo(uint idThread , ref GUITHREADINFO lpgui);
+
     public const int EM_POSFROMCHAR = 0xD6;
     public const uint WM_GETTEXT = 0x000D;
     public const uint WM_GETTEXTLENGTH = 0x000E;
@@ -69,5 +75,28 @@ public static class NativeMethods
     {
         public int X;
         public int Y;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct GUITHREADINFO
+    {
+        public int cbSize;
+        public int flags;
+        public IntPtr hwndActive;
+        public IntPtr hwndFocus;
+        public IntPtr hwndCapture;
+        public IntPtr hwndMenuOwner;
+        public IntPtr hwndMoveSize;
+        public IntPtr hwndCaret;
+        public Rectangle rcCaret;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct Rectangle
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
     }
 }
