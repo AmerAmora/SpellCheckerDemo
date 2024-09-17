@@ -1,16 +1,15 @@
-﻿using System;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
-using System.Windows.Media;
 using Keys = System.Windows.Forms.Keys;
 using System.Windows.Threading;
-using System.Numerics;
 using SpellCheckerDemo;
+using System.Drawing;
+using Brushes = System.Windows.Media.Brushes;
+using Point = System.Drawing.Point;
 
 namespace KeyboardTrackingApp
 {
@@ -28,69 +27,6 @@ namespace KeyboardTrackingApp
         private DispatcherTimer _contentSyncTimer;
         private FloatingPointWindow _floatingPoint;
         private OverlayWindow _overlay;
-
-        [DllImport("user32.dll")]
-        public static extern IntPtr GetForegroundWindow();
-
-        [DllImport("user32.dll" , CharSet = CharSet.Unicode)]
-        public static extern IntPtr SendMessage(IntPtr hWnd , uint Msg , IntPtr wParam , StringBuilder lParam);
-
-        [DllImport("user32.dll")]
-        public static extern bool SetForegroundWindow(IntPtr hWnd);
-
-        [DllImport("user32.dll" , CharSet = CharSet.Unicode)]
-        public static extern bool GetWindowText(IntPtr hWnd , StringBuilder text , int count);
-
-        [DllImport("user32.dll" , CharSet = CharSet.Auto)]
-        private static extern void keybd_event(byte bVk , byte bScan , uint dwFlags , UIntPtr dwExtraInfo);
-
-        [DllImport("user32.dll")]
-        private static extern bool GetKeyboardState(byte[] pbKeyState);
-
-        [DllImport("user32.dll")]
-        private static extern uint MapVirtualKey(uint uCode , uint uMapType);
-
-        [DllImport("user32.dll" , CharSet = CharSet.Unicode)]
-        private static extern int ToUnicode(uint wVirtKey , uint wScanCode , byte[] pKeyState , StringBuilder pChar , int wCharSize , uint wFlags);
-
-        [DllImport("user32.dll" , SetLastError = true)]
-        private static extern IntPtr FindWindowEx(IntPtr parentHandle , IntPtr childAfter , string lpszClass , string lpszWindow);
-
-        [DllImport("user32.dll")]
-        public static extern IntPtr GetKeyboardLayout(uint idThread);
-
-        [DllImport("user32.dll")]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        static extern bool GetWindowRect(IntPtr hWnd , out RECT lpRect);
-
-        [DllImport("user32.dll")]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        static extern bool GetClientRect(IntPtr hWnd , out RECT lpRect);
-
-        [DllImport("user32.dll")]
-        static extern bool ClientToScreen(IntPtr hWnd , ref POINT lpPoint);
-
-        private const uint WM_GETTEXT = 0x000D;
-        private const uint WM_GETTEXTLENGTH = 0x000E;
-        private const int WM_KEYDOWN = 0x0100;
-        private const int WM_KEYUP = 0x0101;
-        private const int KEYEVENTF_KEYUP = 0x0002;
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct RECT
-        {
-            public int Left;
-            public int Top;
-            public int Right;
-            public int Bottom;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct POINT
-        {
-            public int X;
-            public int Y;
-        }
 
         public MainWindow()
         {
@@ -136,12 +72,12 @@ namespace KeyboardTrackingApp
 
         private void WindowCheckTimer_Tick(object sender , EventArgs e)
         {
-            IntPtr foregroundWindow = GetForegroundWindow();
+            IntPtr foregroundWindow = NativeMethods.GetForegroundWindow();
             if (foregroundWindow != _lastActiveWindowHandle)
             {
                 _lastActiveWindowHandle = foregroundWindow;
                 StringBuilder sb = new StringBuilder(256);
-                GetWindowText(foregroundWindow , sb , 256);
+                NativeMethods.GetWindowText(foregroundWindow , sb , 256);
                 string newWindowTitle = sb.ToString();
 
                 if (newWindowTitle != _lastActiveWindowTitle)
@@ -165,8 +101,8 @@ namespace KeyboardTrackingApp
 
         private void UpdateOverlayPosition()
         {
-            RECT rect;
-            if (GetWindowRect(_lastActiveWindowHandle , out rect))
+            NativeMethods.RECT rect;
+            if (NativeMethods.GetWindowRect(_lastActiveWindowHandle , out rect))
             {
                 _overlay.Left = rect.Left;
                 _overlay.Top = rect.Top;
@@ -213,14 +149,14 @@ namespace KeyboardTrackingApp
         {
             try
             {
-                IntPtr editHandle = FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
+                IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
                 if (editHandle != IntPtr.Zero)
                 {
-                    int length = (int)SendMessage(editHandle , WM_GETTEXTLENGTH , IntPtr.Zero , null);
+                    int length = (int)NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETTEXTLENGTH , IntPtr.Zero , null);
                     if (length > 0)
                     {
                         StringBuilder sb = new StringBuilder(length + 1);
-                        SendMessage(editHandle , WM_GETTEXT , (IntPtr)sb.Capacity , sb);
+                        NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETTEXT , (IntPtr)sb.Capacity , sb);
 
                         _allText.Clear();
                         _allText.Append(sb.ToString());
@@ -248,7 +184,7 @@ namespace KeyboardTrackingApp
 
         private void OnKeyPressed(object sender , Keys e)
         {
-            _lastActiveWindowHandle = GetForegroundWindow();
+            _lastActiveWindowHandle = NativeMethods.GetForegroundWindow();
 
             char keyChar = GetCharFromKey(e);
 
@@ -279,12 +215,12 @@ namespace KeyboardTrackingApp
         private char GetCharFromKey(Keys key)
         {
             byte[] keyboardState = new byte[256];
-            GetKeyboardState(keyboardState);
+            NativeMethods.GetKeyboardState(keyboardState);
 
-            uint scanCode = MapVirtualKey((uint)key , 0);
+            uint scanCode = NativeMethods.MapVirtualKey((uint)key , 0);
             StringBuilder stringBuilder = new StringBuilder(2);
 
-            int result = ToUnicode((uint)key , scanCode , keyboardState , stringBuilder , stringBuilder.Capacity , 0);
+            int result = NativeMethods.ToUnicode((uint)key , scanCode , keyboardState , stringBuilder , stringBuilder.Capacity , 0);
             if (result > 0)
             {
                 return stringBuilder[0];
@@ -369,18 +305,29 @@ namespace KeyboardTrackingApp
         {
             string text = _allText.ToString();
             int index = text.LastIndexOf("teh" , StringComparison.OrdinalIgnoreCase);
+
             if (index != -1)
             {
-                RECT clientRect;
-                GetClientRect(_lastActiveWindowHandle , out clientRect);
+                NativeMethods.RECT clientRect;
+                NativeMethods.GetClientRect(_lastActiveWindowHandle , out clientRect);
 
-                POINT point = new POINT { X = 0 , Y = 0 };
-                ClientToScreen(_lastActiveWindowHandle , ref point);
+                NativeMethods.POINT point = new NativeMethods.POINT { X = 0 , Y = 0 };
+                NativeMethods.ClientToScreen(_lastActiveWindowHandle , ref point);
 
-                // Calculate the position of "teh"
-                var textRect = new Rect(point.X + index * 8 , point.Y , 24 , 20); // Assuming 8px per character and 20px height
+                // Get the position of the word "teh"
+                Point tehPosition = GetPositionOfWord("teh");
 
-                _overlay.DrawUnderline(textRect);
+                if (tehPosition != Point.Empty)
+                {
+                    // Calculate the position of "teh" based on the actual text position
+                    var textRect = new Rect(point.X + tehPosition.X , point.Y + tehPosition.Y , 26 , 20);
+
+                    _overlay.DrawUnderline(textRect);
+                }
+                else
+                {
+                    _overlay.DrawUnderline(new Rect(0 , 0 , 0 , 0)); // Clear the underline
+                }
             }
             else
             {
@@ -388,13 +335,36 @@ namespace KeyboardTrackingApp
             }
         }
 
+        private Point GetPositionOfWord(string word)
+        {
+            IntPtr notepadHandle = NativeMethods.GetForegroundWindow();
+            IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
+            if (editHandle != IntPtr.Zero)
+            {
+                string notepadText = GetNotepadContent();
+                int index = notepadText.IndexOf(word , StringComparison.OrdinalIgnoreCase);
+                if (index != -1)
+                {
+                    // Use SendMessage to get the position of the word
+                    IntPtr pos = NativeMethods.SendMessage(editHandle , NativeMethods.EM_POSFROMCHAR , (IntPtr)index , IntPtr.Zero);
+                    if (pos != IntPtr.Zero)
+                    {
+                        int x = pos.ToInt32() & 0xFFFF; // X position is in low-order word
+                        int y = ( pos.ToInt32() >> 16 ) & 0xFFFF; // Y position is in high-order word
+                        return new Point(x , y);
+                    }
+                }
+            }
+            return Point.Empty;
+        }
+
         private void ReplaceWordInActiveApplication(string replacementWord)
         {
-            IntPtr hWnd = GetForegroundWindow();
+            IntPtr hWnd = NativeMethods.GetForegroundWindow();
             if (hWnd == IntPtr.Zero)
                 return;
 
-            SetForegroundWindow(hWnd);
+            NativeMethods.SetForegroundWindow(hWnd);
 
             // Get the current content
             string currentContent = _allText.ToString();
@@ -426,8 +396,8 @@ namespace KeyboardTrackingApp
 
         private void SendKeys(Keys key)
         {
-            keybd_event((byte)key , 0 , 0 , UIntPtr.Zero);
-            keybd_event((byte)key , 0 , KEYEVENTF_KEYUP , UIntPtr.Zero);
+            NativeMethods.keybd_event((byte)key , 0 , 0 , UIntPtr.Zero);
+            NativeMethods.keybd_event((byte)key , 0 , NativeMethods.KEYEVENTF_KEYUP , UIntPtr.Zero);
         }
 
         private void ContentSyncTimer_Tick(object sender , EventArgs e)
@@ -451,15 +421,15 @@ namespace KeyboardTrackingApp
 
         private string GetNotepadContent()
         {
-            IntPtr notepadHandle = GetForegroundWindow();
-            IntPtr editHandle = FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
+            IntPtr notepadHandle = NativeMethods.GetForegroundWindow();
+            IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
             if (editHandle != IntPtr.Zero)
             {
-                int length = (int)SendMessage(editHandle , WM_GETTEXTLENGTH , IntPtr.Zero , null);
+                int length = (int)NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETTEXTLENGTH , IntPtr.Zero , null);
                 if (length > 0)
                 {
                     StringBuilder sb = new StringBuilder(length + 1);
-                    SendMessage(editHandle , WM_GETTEXT , (IntPtr)sb.Capacity , sb);
+                    NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETTEXT , (IntPtr)sb.Capacity , sb);
                     return sb.ToString();
                 }
             }
@@ -467,7 +437,7 @@ namespace KeyboardTrackingApp
         }
         private void CheckKeyboardLayout()
         {
-            IntPtr layout = GetKeyboardLayout(0); // 0 means to get the layout of the current thread.
+            IntPtr layout = NativeMethods.GetKeyboardLayout(0); // 0 means to get the layout of the current thread.
             int languageCode = layout.ToInt32() & 0xFFFF; // The low word contains the language identifier.
             if (languageCode == 0x0C01) // 0x0C01 is the hexadecimal code for Arabic (Saudi Arabia).
             {
@@ -479,58 +449,8 @@ namespace KeyboardTrackingApp
         {
             base.OnClosing(e);
             _floatingPoint.Close();
-        }
-    }
-
-    public class SuggestionsControl : StackPanel
-    {
-        public event EventHandler SuggestionAccepted;
-        public event EventHandler SuggestionCancelled;
-
-        private TextBlock _suggestionTextBlock;
-        private Button _acceptButton;
-        private Button _cancelButton;
-
-        public SuggestionsControl()
-        {
-            _suggestionTextBlock = new TextBlock
-            {
-                Padding = new Thickness(5) ,
-                Background = Brushes.LightYellow
-            };
-
-            _acceptButton = new Button
-            {
-                Content = "Accept" ,
-                Margin = new Thickness(5) ,
-                Padding = new Thickness(5)
-            };
-            _acceptButton.Click += (s , e) => SuggestionAccepted?.Invoke(this , EventArgs.Empty);
-
-            _cancelButton = new Button
-            {
-                Content = "Cancel" ,
-                Margin = new Thickness(5) ,
-                Padding = new Thickness(5)
-            };
-            _cancelButton.Click += (s , e) => SuggestionCancelled?.Invoke(this , EventArgs.Empty);
-
-            Children.Add(_suggestionTextBlock);
-            Children.Add(_acceptButton);
-            Children.Add(_cancelButton);
-        }
-
-        public void SetSuggestion(string suggestion)
-        {
-            if (string.IsNullOrEmpty(suggestion))
-            {
-                Visibility = Visibility.Collapsed;
-            }
-            else
-            {
-                _suggestionTextBlock.Text = $"Suggested: {suggestion}";
-                Visibility = Visibility.Visible;
-            }
+            _overlay.Close();
+            _keyboardHook.Dispose();
         }
     }
 }

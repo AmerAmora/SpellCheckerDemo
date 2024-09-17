@@ -24,8 +24,12 @@ namespace SpellCheckerDemo
 
             this.MouseLeftButtonDown += (s , e) =>
             {
-                isUserDragging = true;
-                this.DragMove();
+                // Check if the left mouse button is actually pressed before calling DragMove.
+                if (e.LeftButton == MouseButtonState.Pressed)
+                {
+                    isUserDragging = true;
+                    this.DragMove();
+                }
             };
 
             this.MouseDoubleClick += (s , e) =>
