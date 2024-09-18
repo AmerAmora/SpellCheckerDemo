@@ -1,18 +1,21 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Media;
 using Keys = System.Windows.Forms.Keys;
 using System.Windows.Threading;
-using SpellCheckerDemo;
-using Brushes = System.Windows.Media.Brushes;
-using Point = System.Drawing.Point;
 using Microsoft.Office.Interop.Word;
 using Application = Microsoft.Office.Interop.Word.Application;
+using System.Reflection.Metadata;
 
 namespace KeyboardTrackingApp
 {
-    public partial class MainWindow : Window
+    public partial class MainWindow : System.Windows.Window
     {
         private GlobalKeyboardHook _keyboardHook;
         private StringBuilder _currentWord = new StringBuilder();
@@ -22,10 +25,44 @@ namespace KeyboardTrackingApp
         private DispatcherTimer _windowCheckTimer;
         private DispatcherTimer _processCheckTimer;
         private int? _notepadProcessId;
+        private int? _microsoftWordProcessId;
         private SuggestionsControl _suggestionsControl;
         private DispatcherTimer _contentSyncTimer;
-        private FloatingPointWindow _floatingPoint;
-        private OverlayWindow _overlay;
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll" , CharSet = CharSet.Unicode)]
+        public static extern IntPtr SendMessage(IntPtr hWnd , uint Msg , IntPtr wParam , StringBuilder lParam);
+
+        [DllImport("user32.dll")]
+        public static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll" , CharSet = CharSet.Unicode)]
+        public static extern bool GetWindowText(IntPtr hWnd , StringBuilder text , int count);
+
+        [DllImport("user32.dll" , CharSet = CharSet.Auto)]
+        private static extern void keybd_event(byte bVk , byte bScan , uint dwFlags , UIntPtr dwExtraInfo);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetKeyboardState(byte[] pbKeyState);
+
+        [DllImport("user32.dll")]
+        private static extern uint MapVirtualKey(uint uCode , uint uMapType);
+
+        [DllImport("user32.dll" , CharSet = CharSet.Unicode)]
+        private static extern int ToUnicode(uint wVirtKey , uint wScanCode , byte[] pKeyState , StringBuilder pChar , int wCharSize , uint wFlags);
+
+        [DllImport("user32.dll" , SetLastError = true)]
+        private static extern IntPtr FindWindowEx(IntPtr parentHandle , IntPtr childAfter , string lpszClass , string lpszWindow);
+        [DllImport("user32.dll")]
+        public static extern IntPtr GetKeyboardLayout(uint idThread);
+
+        private const uint WM_GETTEXT = 0x000D;
+        private const uint WM_GETTEXTLENGTH = 0x000E;
+        private const int WM_KEYDOWN = 0x0100;
+        private const int WM_KEYUP = 0x0101;
+        private const int KEYEVENTF_KEYUP = 0x0002;
 
         public MainWindow()
         {
@@ -41,7 +78,7 @@ namespace KeyboardTrackingApp
 
             _windowCheckTimer = new DispatcherTimer
             {
-                Interval = TimeSpan.FromMilliseconds(100)
+                Interval = TimeSpan.FromMilliseconds(500)
             };
             _windowCheckTimer.Tick += WindowCheckTimer_Tick;
             _windowCheckTimer.Start();
@@ -59,24 +96,16 @@ namespace KeyboardTrackingApp
             };
             _contentSyncTimer.Tick += ContentSyncTimer_Tick;
             _contentSyncTimer.Start();
-
-            _floatingPoint = new FloatingPointWindow();
-            _floatingPoint.Show();
-
-            _overlay = new OverlayWindow();
-            _overlay.Show();
-
-            this.Hide();
         }
 
         private void WindowCheckTimer_Tick(object sender , EventArgs e)
         {
-            IntPtr foregroundWindow = NativeMethods.GetForegroundWindow();
+            IntPtr foregroundWindow = GetForegroundWindow();
             if (foregroundWindow != _lastActiveWindowHandle)
             {
                 _lastActiveWindowHandle = foregroundWindow;
-                StringBuilder sb = new StringBuilder(256);
-                NativeMethods.GetWindowText(foregroundWindow , sb , 256);
+                StringBuilder sb = new StringBuilder(256); // This should now properly handle Arabic text
+                GetWindowText(foregroundWindow , sb , 256);
                 string newWindowTitle = sb.ToString();
 
                 if (newWindowTitle != _lastActiveWindowTitle)
@@ -87,26 +116,16 @@ namespace KeyboardTrackingApp
                         _notepadProcessId = GetProcessId(foregroundWindow);
                         ReadWindowContent(foregroundWindow);
                     }
+                    else if (IsMicroSoftWord(newWindowTitle))
+                    {
+                        _microsoftWordProcessId = GetProcessId(foregroundWindow);
+                        ReadWordContent();
+                    }
                     else
                     {
                         _notepadProcessId = null;
                     }
                 }
-
-                UpdateOverlayPosition();
-                CheckForIncorrectWords();
-            }
-        }
-
-        private void UpdateOverlayPosition()
-        {
-            NativeMethods.RECT rect;
-            if (NativeMethods.GetWindowRect(_lastActiveWindowHandle , out rect))
-            {
-                _overlay.Left = rect.Left;
-                _overlay.Top = rect.Top;
-                _overlay.Width = rect.Right - rect.Left;
-                _overlay.Height = rect.Bottom - rect.Top;
             }
         }
 
@@ -119,6 +138,16 @@ namespace KeyboardTrackingApp
                 {
                     _allText.Clear();
                     _notepadProcessId = null;
+                }
+            }
+            else if (_microsoftWordProcessId.HasValue)
+            {
+
+                var wordProcess = Process.GetProcesses().FirstOrDefault(p => p.Id == _microsoftWordProcessId.Value);
+                if (wordProcess == null)
+                {
+                    _allText.Clear();
+                    _microsoftWordProcessId = null;
                 }
             }
         }
@@ -144,18 +173,23 @@ namespace KeyboardTrackingApp
                    windowTitle.EndsWith("Notepad");
         }
 
+        private bool IsMicroSoftWord(string windowTitle)
+        {
+            return windowTitle.EndsWith(" - Word");
+        }
+
         private void ReadWindowContent(IntPtr notepadHandle)
         {
             try
             {
-                IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
+                IntPtr editHandle = FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
                 if (editHandle != IntPtr.Zero)
                 {
-                    int length = (int)NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETTEXTLENGTH , IntPtr.Zero , null);
+                    int length = (int)SendMessage(editHandle , WM_GETTEXTLENGTH , IntPtr.Zero , null);
                     if (length > 0)
                     {
                         StringBuilder sb = new StringBuilder(length + 1);
-                        NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETTEXT , (IntPtr)sb.Capacity , sb);
+                        SendMessage(editHandle , WM_GETTEXT , (IntPtr)sb.Capacity , sb);
 
                         _allText.Clear();
                         _allText.Append(sb.ToString());
@@ -164,7 +198,6 @@ namespace KeyboardTrackingApp
                         Dispatcher.Invoke(() =>
                         {
                             HighlightTeh();
-                            CheckForIncorrectWords();
                         });
 
                         Console.WriteLine("Read content from Notepad: " + _allText.ToString());
@@ -181,9 +214,61 @@ namespace KeyboardTrackingApp
             }
         }
 
+        private void ReadWordContent()
+        {
+            Application wordApp = null;
+            Document activeDocument = null;
+
+            try
+            {
+                // Attempt to get the existing instance of Word
+                try
+                {
+                    wordApp = (Application)SpellCheckerDemo.ReplaceMarshall.GetActiveObject("Word.Application");
+                }
+                catch (COMException)
+                {
+                    Console.WriteLine("Microsoft Word is not running.");
+                    return;
+                }
+
+                // Access the active Word document
+                if (wordApp != null && wordApp.Documents.Count > 0)
+                {
+                    activeDocument = wordApp.ActiveDocument;
+                    StringBuilder sb = new StringBuilder();
+
+                    // Loop through each paragraph in the document
+                    foreach (Microsoft.Office.Interop.Word.Paragraph paragraph in activeDocument.Paragraphs)
+                    {
+                        sb.AppendLine(paragraph.Range.Text);
+                    }
+
+                    _allText.Clear();
+                    _allText.Append(sb.ToString());
+                    _currentWord.Clear();
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        HighlightTeh(); // Custom method to highlight specific words
+                    });
+
+                    Console.WriteLine("Read content from Word: " + _allText.ToString());
+                }
+                else
+                {
+                    Console.WriteLine("No active Word document found.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error reading Word content: {ex.Message}");
+            }
+        }
+
         private void OnKeyPressed(object sender , Keys e)
         {
-            _lastActiveWindowHandle = NativeMethods.GetForegroundWindow();
+            _lastActiveWindowHandle = GetForegroundWindow();
 
             char keyChar = GetCharFromKey(e);
 
@@ -207,19 +292,18 @@ namespace KeyboardTrackingApp
             Dispatcher.Invoke(() =>
             {
                 HighlightTeh();
-                CheckForIncorrectWords();
             });
         }
 
         private char GetCharFromKey(Keys key)
         {
             byte[] keyboardState = new byte[256];
-            NativeMethods.GetKeyboardState(keyboardState);
+            GetKeyboardState(keyboardState);
 
-            uint scanCode = NativeMethods.MapVirtualKey((uint)key , 0);
+            uint scanCode = MapVirtualKey((uint)key , 0);
             StringBuilder stringBuilder = new StringBuilder(2);
 
-            int result = NativeMethods.ToUnicode((uint)key , scanCode , keyboardState , stringBuilder , stringBuilder.Capacity , 0);
+            int result = ToUnicode((uint)key , scanCode , keyboardState , stringBuilder , stringBuilder.Capacity , 0);
             if (result > 0)
             {
                 return stringBuilder[0];
@@ -271,7 +355,6 @@ namespace KeyboardTrackingApp
             Dispatcher.Invoke(() =>
             {
                 HighlightTeh();
-                CheckForIncorrectWords();
                 _suggestionsControl.SetSuggestion(null);
                 SuggestionsPopup.IsOpen = false;
             });
@@ -300,70 +383,13 @@ namespace KeyboardTrackingApp
             }
         }
 
-        private void CheckForIncorrectWords()
-        {
-            string text = _allText.ToString();
-            int index = text.LastIndexOf("teh" , StringComparison.OrdinalIgnoreCase);
-
-            if (index != -1)
-            {
-                NativeMethods.RECT clientRect;
-                NativeMethods.GetClientRect(_lastActiveWindowHandle , out clientRect);
-
-                NativeMethods.POINT point = new NativeMethods.POINT { X = 0 , Y = 0 };
-                NativeMethods.ClientToScreen(_lastActiveWindowHandle , ref point);
-
-                // Get the position of the word "teh"
-                Point tehPosition = GetPositionOfWord("teh");
-
-                if (tehPosition != Point.Empty)
-                {
-                    // Calculate the position of "teh" based on the actual text position
-                    var textRect = new Rect(point.X + tehPosition.X , point.Y + tehPosition.Y , 26 , 20);
-
-                    _overlay.DrawUnderline(textRect);
-                }
-                else
-                {
-                    _overlay.DrawUnderline(new Rect(0 , 0 , 0 , 0)); // Clear the underline
-                }
-            }
-            else
-            {
-                _overlay.DrawUnderline(new Rect(0 , 0 , 0 , 0)); // Clear the underline
-            }
-        }
-
-        private Point GetPositionOfWord(string word)
-        {
-            IntPtr notepadHandle = NativeMethods.GetForegroundWindow();
-            IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
-            if (editHandle != IntPtr.Zero)
-            {
-                string notepadText = GetNotepadContent();
-                int index = notepadText.IndexOf(word , StringComparison.OrdinalIgnoreCase);
-                if (index != -1)
-                {
-                    // Use SendMessage to get the position of the word
-                    IntPtr pos = NativeMethods.SendMessage(editHandle , NativeMethods.EM_POSFROMCHAR , (IntPtr)index , IntPtr.Zero);
-                    if (pos != IntPtr.Zero)
-                    {
-                        int x = pos.ToInt32() & 0xFFFF; // X position is in low-order word
-                        int y = ( pos.ToInt32() >> 16 ) & 0xFFFF; // Y position is in high-order word
-                        return new Point(x , y);
-                    }
-                }
-            }
-            return Point.Empty;
-        }
-
         private void ReplaceWordInActiveApplication(string replacementWord)
         {
-            IntPtr hWnd = NativeMethods.GetForegroundWindow();
+            IntPtr hWnd = GetForegroundWindow();
             if (hWnd == IntPtr.Zero)
                 return;
 
-            NativeMethods.SetForegroundWindow(hWnd);
+            SetForegroundWindow(hWnd);
 
             // Get the current content
             string currentContent = _allText.ToString();
@@ -395,13 +421,20 @@ namespace KeyboardTrackingApp
 
         private void SendKeys(Keys key)
         {
-            NativeMethods.keybd_event((byte)key , 0 , 0 , UIntPtr.Zero);
-            NativeMethods.keybd_event((byte)key , 0 , NativeMethods.KEYEVENTF_KEYUP , UIntPtr.Zero);
+            keybd_event((byte)key , 0 , 0 , UIntPtr.Zero);
+            keybd_event((byte)key , 0 , KEYEVENTF_KEYUP , UIntPtr.Zero);
         }
-
         private void ContentSyncTimer_Tick(object sender , EventArgs e)
         {
-            if (_notepadProcessId.HasValue)
+            IntPtr foregroundWindow = GetForegroundWindow();
+
+            _lastActiveWindowHandle = foregroundWindow;
+            StringBuilder sb = new StringBuilder(256); // This should now properly handle Arabic text
+            GetWindowText(foregroundWindow , sb , 256);
+            string newWindowTitle = sb.ToString();
+            var isnotePad = IsNotepad(newWindowTitle);
+            var isword = IsMicroSoftWord(newWindowTitle);
+            if (isnotePad)
             {
                 string notepadContent = GetNotepadContent();
                 if (notepadContent != _allText.ToString())
@@ -412,44 +445,142 @@ namespace KeyboardTrackingApp
                     Dispatcher.Invoke(() =>
                     {
                         HighlightTeh();
-                        CheckForIncorrectWords();
                     });
                 }
             }
+
+            if (isword)
+            {
+                string microsoftWord = GetMicrosoftWordContent();
+                if (microsoftWord != _allText.ToString())
+                {
+                    _allText.Clear();
+                    _allText.Append(microsoftWord);
+                    _currentWord.Clear();
+                    Dispatcher.Invoke(() =>
+                    {
+                        HighlightTeh();
+                    });
+                }
+            }
+
         }
 
         private string GetNotepadContent()
         {
-            IntPtr notepadHandle = NativeMethods.GetForegroundWindow();
-            IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
+            IntPtr notepadHandle = GetForegroundWindow();
+            IntPtr editHandle = FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
             if (editHandle != IntPtr.Zero)
             {
-                int length = (int)NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETTEXTLENGTH , IntPtr.Zero , null);
+                int length = (int)SendMessage(editHandle , WM_GETTEXTLENGTH , IntPtr.Zero , null);
                 if (length > 0)
                 {
                     StringBuilder sb = new StringBuilder(length + 1);
-                    NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETTEXT , (IntPtr)sb.Capacity , sb);
+                    SendMessage(editHandle , WM_GETTEXT , (IntPtr)sb.Capacity , sb);
                     return sb.ToString();
                 }
             }
             return string.Empty;
         }
+
+        private string GetMicrosoftWordContent()
+        {
+            try
+            {
+                Application wordApp = null;
+                Document activeDocument = null;
+                try
+                {
+                    wordApp = (Application)SpellCheckerDemo.ReplaceMarshall.GetActiveObject("Word.Application");
+                }
+                catch (COMException)
+                {
+                    Console.WriteLine("Microsoft Word is not running.");
+                    return null;
+                }
+
+                // Access the active Word document
+                if (wordApp != null && wordApp.Documents.Count > 0)
+                {
+                    activeDocument = wordApp.ActiveDocument;
+                    StringBuilder sb = new StringBuilder();
+
+                    // Loop through each paragraph in the document
+                    foreach (Microsoft.Office.Interop.Word.Paragraph paragraph in activeDocument.Paragraphs)
+                    {
+                        sb.AppendLine(paragraph.Range.Text);
+                    }
+                    return sb.ToString();
+                }
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("Microsoft Word is not running.");
+            }
+            return null;
+
+        }
+
         private void CheckKeyboardLayout()
         {
-            IntPtr layout = NativeMethods.GetKeyboardLayout(0); // 0 means to get the layout of the current thread.
+            IntPtr layout = GetKeyboardLayout(0); // 0 means to get the layout of the current thread.
             int languageCode = layout.ToInt32() & 0xFFFF; // The low word contains the language identifier.
             if (languageCode == 0x0C01) // 0x0C01 is the hexadecimal code for Arabic (Saudi Arabia).
             {
                 Console.WriteLine("Arabic keyboard layout is active.");
             }
         }
+    }
 
-        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+    public class SuggestionsControl : StackPanel
+    {
+        public event EventHandler SuggestionAccepted;
+        public event EventHandler SuggestionCancelled;
+
+        private TextBlock _suggestionTextBlock;
+        private Button _acceptButton;
+        private Button _cancelButton;
+
+        public SuggestionsControl()
         {
-            base.OnClosing(e);
-            _floatingPoint.Close();
-            _overlay.Close();
-            _keyboardHook.Dispose();
+            _suggestionTextBlock = new TextBlock
+            {
+                Padding = new Thickness(5) ,
+                Background = Brushes.LightYellow
+            };
+
+            _acceptButton = new Button
+            {
+                Content = "Accept" ,
+                Margin = new Thickness(5) ,
+                Padding = new Thickness(5)
+            };
+            _acceptButton.Click += (s , e) => SuggestionAccepted?.Invoke(this , EventArgs.Empty);
+
+            _cancelButton = new Button
+            {
+                Content = "Cancel" ,
+                Margin = new Thickness(5) ,
+                Padding = new Thickness(5)
+            };
+            _cancelButton.Click += (s , e) => SuggestionCancelled?.Invoke(this , EventArgs.Empty);
+
+            Children.Add(_suggestionTextBlock);
+            Children.Add(_acceptButton);
+            Children.Add(_cancelButton);
+        }
+
+        public void SetSuggestion(string suggestion)
+        {
+            if (string.IsNullOrEmpty(suggestion))
+            {
+                Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                _suggestionTextBlock.Text = $"Suggested: {suggestion}";
+                Visibility = Visibility.Visible;
+            }
         }
     }
 }
