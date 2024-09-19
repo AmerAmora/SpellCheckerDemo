@@ -34,7 +34,7 @@ namespace KeyboardTrackingApp
         private OverlayWindow _overlay;
         private readonly HttpClient _httpClient;
         private readonly string _apiUrl = "https://api-stg.qalam.ai/test/go";
-        private readonly string _bearerToken = "eyJraWQiOiJCSHhSWWpqenV6N1JpKzM4dVlCWkJcLzYwR3FIcVhqQjI2bHAxOVd6dTIwaz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiY3VzdG9tOnV0bV9zcmMiOiJOQSIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTEuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0xX2xNc0lHNmQ3ZyIsImNvZ25pdG86dXNlcm5hbWUiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiI4NDZmMzAzNi1lNjg2LTRlNDMtYjUyYy00NmFmYTE4OTM4YTciLCJnaXZlbl9uYW1lIjoidGVzdCIsImF1ZCI6IjU5cW0xbDRnamlnczc2bzVqOTJucDQ2MGp0IiwiZXZlbnRfaWQiOiJmODgwYjI2Yy1kMWFiLTRmZGItYjZkNi1lZjg4MGYyNzg5Y2EiLCJ0b2tlbl91c2UiOiJpZCIsImF1dGhfdGltZSI6MTcyNjc0Njg1OCwiZXhwIjoxNzI2NzUwNDU4LCJpYXQiOjE3MjY3NDY4NTgsImZhbWlseV9uYW1lIjoidGVzdCIsImVtYWlsIjoicGVkaWZhYzI4M0BjZXRub2IuY29tIn0.ieYx-3vDR9b-vLr0SgweNsHtwqboTTkckunGQ8Ii-ETM0wYWBNyaD-sip2Gykt44DUhDttU4UE1_qsLy9QYePpJRdpjD39U3idBOTQ6A_rCYiNsxR2GyqNXjY8Oq67MUMilz-ZJTDMMFrn3IMJfRuqS336Ov8EfuTYvIQC-fDshzTULH_NMk6GK7WNfy69nDVn7kZe0IY1cF9dWbKNtGxQGVFwFaP843PAoqEVIcAACSSfoVT_wmtzkV9ke5-dEaffZwoeJr0DBvR5f12uT703VU2QlZI9_kF3uXep3fICNNOQ7do5Vxr_L5TXI5cPelfIGxdsPQRQAsk8ihi1W4qQ";
+        private readonly string _bearerToken = "eyJraWQiOiJCSHhSWWpqenV6N1JpKzM4dVlCWkJcLzYwR3FIcVhqQjI2bHAxOVd6dTIwaz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiY3VzdG9tOnV0bV9zcmMiOiJOQSIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTEuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0xX2xNc0lHNmQ3ZyIsImNvZ25pdG86dXNlcm5hbWUiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiI4NDZmMzAzNi1lNjg2LTRlNDMtYjUyYy00NmFmYTE4OTM4YTciLCJnaXZlbl9uYW1lIjoidGVzdCIsImF1ZCI6IjU5cW0xbDRnamlnczc2bzVqOTJucDQ2MGp0IiwiZXZlbnRfaWQiOiI4YzA1ODEyOC05ZDIxLTQzY2ItYWM3Ny0xMTAwZjEyMWY1NDkiLCJ0b2tlbl91c2UiOiJpZCIsImF1dGhfdGltZSI6MTcyNjc1MDc3OCwiZXhwIjoxNzI2NzU0Mzc4LCJpYXQiOjE3MjY3NTA3NzgsImZhbWlseV9uYW1lIjoidGVzdCIsImVtYWlsIjoicGVkaWZhYzI4M0BjZXRub2IuY29tIn0.XGll6gXeZyc4riSoF26qFQXgSndWjTbRdlCYr_NpdzSnWJzYnEweny4tuAcK2ya8mH55jNUa1h3ThN1F9-LnKhbID45vhzB3Y0IyxiAXIZMS5iRZSeJRzlZBpTiMAlGsbN0XZTq7guY11UjtBc-p3BuexAVqVYmDFrW80V24kSEJJ1g3-6_RKVC1v3CNOUT8tx_W6hTW0_LDKXpLQ5iIuNhxPqJ3FQKiMH5o73wUouhSZv51eOzQu9D33ywjmkhYCakUsPfjQixDIFn0MapEm6yi4AEEG3DxySZPhE14ihXedH4XCQua2hhB2LZVsHJm7_ygiNv9_dsvrpB9mf-xNQ";
         private string _documentId;
 
         public MainWindow()
@@ -345,7 +345,7 @@ namespace KeyboardTrackingApp
                 return;
             }
 
-            List<(System.Windows.Point screenPosition, double width)> underlines = new List<(System.Windows.Point, double)>();
+            List<(System.Windows.Point screenPosition, double width, string incorrectWord, string suggestion)> underlines = new List<(System.Windows.Point, double, string, string)>();
 
             foreach (var flaggedToken in apiResponse.spellCheckResponse.results.flagged_tokens)
             {
@@ -362,7 +362,9 @@ namespace KeyboardTrackingApp
                     NativeMethods.ClientToScreen(editHandle , ref clientPoint);
 
                     double width = ( flaggedToken.end_index - flaggedToken.start_index ) * 8; // Approximate width based on character count
-                    underlines.Add((new System.Windows.Point(clientPoint.X , clientPoint.Y + 20), width));
+                    string incorrectWord = text.Substring(flaggedToken.start_index , flaggedToken.end_index - flaggedToken.start_index);
+                    string suggestion = flaggedToken.suggestions.FirstOrDefault().text ?? "";
+                    underlines.Add((new System.Windows.Point(clientPoint.X , clientPoint.Y + 20), width, incorrectWord, suggestion));
                 }
             }
 
@@ -375,11 +377,24 @@ namespace KeyboardTrackingApp
                 }
                 else
                 {
-                    _overlay.DrawUnderlines(new List<(System.Windows.Point, double)>()); // Clear all underlines
+                    _overlay.DrawUnderlines(new List<(System.Windows.Point, double, string, string)>()); // Clear all underlines
                     Console.WriteLine("No errors found in text");
                 }
                 UpdateErrorCount(apiResponse.spellCheckResponse.results.flagged_tokens.Count);
             });
+        }
+
+        private void InitializeOverlay()
+        {
+            _overlay = new OverlayWindow();
+            _overlay.Show();
+            _overlay.SuggestionAccepted += Overlay_SuggestionAccepted;
+        }
+
+        private void Overlay_SuggestionAccepted(object sender , string suggestion)
+        {
+            ReplaceWordInActiveApplication(suggestion);
+            CheckForIncorrectWords(); // Recheck for incorrect words after replacement
         }
 
         private void UpdateErrorCount(int errorCount)
