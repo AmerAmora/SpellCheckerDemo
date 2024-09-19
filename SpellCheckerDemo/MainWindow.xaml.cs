@@ -11,6 +11,10 @@ using System.Drawing;
 using System.Windows.Interop;
 using System.Windows.Media;
 using static NativeMethods;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using Newtonsoft.Json;
+using SpellCheckerDemo.Models;
 
 namespace KeyboardTrackingApp
 {
@@ -28,6 +32,10 @@ namespace KeyboardTrackingApp
         private DispatcherTimer _contentSyncTimer;
         private FloatingPointWindow _floatingPoint;
         private OverlayWindow _overlay;
+        private readonly HttpClient _httpClient;
+        private readonly string _apiUrl = "https://api-stg.qalam.ai/test/go";
+        private readonly string _bearerToken = "eyJraWQiOiJCSHhSWWpqenV6N1JpKzM4dVlCWkJcLzYwR3FIcVhqQjI2bHAxOVd6dTIwaz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiY3VzdG9tOnV0bV9zcmMiOiJOQSIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTEuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0xX2xNc0lHNmQ3ZyIsImNvZ25pdG86dXNlcm5hbWUiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiI4NDZmMzAzNi1lNjg2LTRlNDMtYjUyYy00NmFmYTE4OTM4YTciLCJnaXZlbl9uYW1lIjoidGVzdCIsImF1ZCI6IjU5cW0xbDRnamlnczc2bzVqOTJucDQ2MGp0IiwiZXZlbnRfaWQiOiJmODgwYjI2Yy1kMWFiLTRmZGItYjZkNi1lZjg4MGYyNzg5Y2EiLCJ0b2tlbl91c2UiOiJpZCIsImF1dGhfdGltZSI6MTcyNjc0Njg1OCwiZXhwIjoxNzI2NzUwNDU4LCJpYXQiOjE3MjY3NDY4NTgsImZhbWlseV9uYW1lIjoidGVzdCIsImVtYWlsIjoicGVkaWZhYzI4M0BjZXRub2IuY29tIn0.ieYx-3vDR9b-vLr0SgweNsHtwqboTTkckunGQ8Ii-ETM0wYWBNyaD-sip2Gykt44DUhDttU4UE1_qsLy9QYePpJRdpjD39U3idBOTQ6A_rCYiNsxR2GyqNXjY8Oq67MUMilz-ZJTDMMFrn3IMJfRuqS336Ov8EfuTYvIQC-fDshzTULH_NMk6GK7WNfy69nDVn7kZe0IY1cF9dWbKNtGxQGVFwFaP843PAoqEVIcAACSSfoVT_wmtzkV9ke5-dEaffZwoeJr0DBvR5f12uT703VU2QlZI9_kF3uXep3fICNNOQ7do5Vxr_L5TXI5cPelfIGxdsPQRQAsk8ihi1W4qQ";
+        private string _documentId;
 
         public MainWindow()
         {
@@ -69,6 +77,31 @@ namespace KeyboardTrackingApp
             _overlay.Show();
 
             this.Hide();
+            _httpClient = new HttpClient();
+            _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*"));
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer" , _bearerToken);
+            _documentId = Guid.NewGuid().ToString(); // Generate a unique document ID
+        }
+
+        private async Task<ApiResponse> GetSpellCheckResultsAsync(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return null;
+
+            var request = new SpellCheckRequest
+            {
+                text = text.Replace("\n" , "/n") ,
+                docId = _documentId
+            };
+
+            var json = JsonConvert.SerializeObject(request);
+            var content = new StringContent(json , Encoding.UTF8 , "application/json");
+
+            var response = await _httpClient.PostAsync(_apiUrl , content);
+            response.EnsureSuccessStatusCode();
+            var responseString = await response.Content.ReadAsStringAsync();
+            var result = JsonConvert.DeserializeObject<ApiResponse>(responseString);
+            return result;
         }
 
         private void WindowCheckTimer_Tick(object sender , EventArgs e)
@@ -208,7 +241,6 @@ namespace KeyboardTrackingApp
 
             Dispatcher.Invoke(() =>
             {
-                HighlightTeh();
                 CheckForIncorrectWords();
             });
         }
@@ -302,34 +334,38 @@ namespace KeyboardTrackingApp
             }
         }
 
-        private void CheckForIncorrectWords()
+        private async void CheckForIncorrectWords()
         {
             string text = _allText.ToString();
+            var apiResponse = await GetSpellCheckResultsAsync(text);
+
+            if (apiResponse?.spellCheckResponse?.results?.flagged_tokens == null)
+            {
+                Console.WriteLine("No flagged tokens found or API response was null.");
+                return;
+            }
+
             List<(System.Windows.Point screenPosition, double width)> underlines = new List<(System.Windows.Point, double)>();
 
-            int index = 0;
-            int errorCount = 0;
-            while (( index = text.IndexOf("teh" , index , StringComparison.OrdinalIgnoreCase) ) != -1)
+            foreach (var flaggedToken in apiResponse.spellCheckResponse.results.flagged_tokens)
             {
                 IntPtr notepadHandle = NativeMethods.GetForegroundWindow();
                 IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
 
                 if (editHandle != IntPtr.Zero)
                 {
-                    IntPtr charPos = NativeMethods.SendMessage(editHandle , NativeMethods.EM_POSFROMCHAR , (IntPtr)index , IntPtr.Zero);
+                    IntPtr charPos = NativeMethods.SendMessage(editHandle , NativeMethods.EM_POSFROMCHAR , (IntPtr)flaggedToken.start_index , IntPtr.Zero);
                     int x = ( charPos.ToInt32() & 0xFFFF );
                     int y = ( ( charPos.ToInt32() >> 16 ) & 0xFFFF );
 
                     POINT clientPoint = new POINT { X = x , Y = y };
                     NativeMethods.ClientToScreen(editHandle , ref clientPoint);
 
-                    underlines.Add((new System.Windows.Point(clientPoint.X , clientPoint.Y + 20), 26));
+                    double width = ( flaggedToken.end_index - flaggedToken.start_index ) * 8; // Approximate width based on character count
+                    underlines.Add((new System.Windows.Point(clientPoint.X , clientPoint.Y + 20), width));
                 }
-                errorCount++;
-                index += 3; // Move past the current "teh"
             }
 
-            // Ensure this is called on the UI thread
             Application.Current.Dispatcher.Invoke(() =>
             {
                 if (underlines.Count > 0)
@@ -340,9 +376,9 @@ namespace KeyboardTrackingApp
                 else
                 {
                     _overlay.DrawUnderlines(new List<(System.Windows.Point, double)>()); // Clear all underlines
-                    Console.WriteLine("No 'teh' found in text");
+                    Console.WriteLine("No errors found in text");
                 }
-                UpdateErrorCount(errorCount);
+                UpdateErrorCount(apiResponse.spellCheckResponse.results.flagged_tokens.Count);
             });
         }
 
@@ -468,5 +504,73 @@ namespace KeyboardTrackingApp
             _overlay.Close();
             _keyboardHook.Dispose();
         }
+    }
+
+    public class SpellCheckRequest
+    {
+        public string text { get; set; }
+        public string docId { get; set; }
+    }
+
+    public class ApiResponse
+    {
+        public SpellCheckResponse spellCheckResponse { get; set; }
+        public GrammarResponse grammarResponse { get; set; }
+        public PhrasingResponse phrasingResponse { get; set; }
+        public List<object> termSuggestions { get; set; }
+        public TafqitResponse tafqitResponse { get; set; }
+        public OtherSuggestions otherSuggestions { get; set; }
+        public int teaserBalance { get; set; }
+    }
+
+    public class SpellCheckResponse
+    {
+        public string version { get; set; }
+        public SpellCheckResults results { get; set; }
+    }
+
+    public class SpellCheckResults
+    {
+        public List<FlaggedToken> flagged_tokens { get; set; }
+    }
+
+    public class FlaggedToken
+    {
+        public string original_word { get; set; }
+        public int start_index { get; set; }
+        public int end_index { get; set; }
+        public List<Suggestion> suggestions { get; set; }
+        public string arabic_reason { get; set; }
+        public string lang { get; set; }
+    }
+
+    public class Suggestion
+    {
+        public string text { get; set; }
+        public string confidence { get; set; }
+        public List<string> reasons { get; set; }
+    }
+
+    public class GrammarResponse
+    {
+        public string version { get; set; }
+        public object results { get; set; }
+    }
+
+    public class PhrasingResponse
+    {
+        public string version { get; set; }
+        public object results { get; set; }
+    }
+
+    public class TafqitResponse
+    {
+        public object results { get; set; }
+    }
+
+    public class OtherSuggestions
+    {
+        public string version { get; set; }
+        public object results { get; set; }
     }
 }
