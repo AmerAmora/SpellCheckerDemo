@@ -34,7 +34,7 @@ namespace KeyboardTrackingApp
         private OverlayWindow _overlay;
         private readonly HttpClient _httpClient;
         private readonly string _apiUrl = "https://api-stg.qalam.ai/test/go";
-        private readonly string _bearerToken = "eyJraWQiOiJCSHhSWWpqenV6N1JpKzM4dVlCWkJcLzYwR3FIcVhqQjI2bHAxOVd6dTIwaz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiY3VzdG9tOnV0bV9zcmMiOiJOQSIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTEuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0xX2xNc0lHNmQ3ZyIsImNvZ25pdG86dXNlcm5hbWUiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiI4NDZmMzAzNi1lNjg2LTRlNDMtYjUyYy00NmFmYTE4OTM4YTciLCJnaXZlbl9uYW1lIjoidGVzdCIsImF1ZCI6IjU5cW0xbDRnamlnczc2bzVqOTJucDQ2MGp0IiwiZXZlbnRfaWQiOiI4YzA1ODEyOC05ZDIxLTQzY2ItYWM3Ny0xMTAwZjEyMWY1NDkiLCJ0b2tlbl91c2UiOiJpZCIsImF1dGhfdGltZSI6MTcyNjc1MDc3OCwiZXhwIjoxNzI2NzU0Mzc4LCJpYXQiOjE3MjY3NTA3NzgsImZhbWlseV9uYW1lIjoidGVzdCIsImVtYWlsIjoicGVkaWZhYzI4M0BjZXRub2IuY29tIn0.XGll6gXeZyc4riSoF26qFQXgSndWjTbRdlCYr_NpdzSnWJzYnEweny4tuAcK2ya8mH55jNUa1h3ThN1F9-LnKhbID45vhzB3Y0IyxiAXIZMS5iRZSeJRzlZBpTiMAlGsbN0XZTq7guY11UjtBc-p3BuexAVqVYmDFrW80V24kSEJJ1g3-6_RKVC1v3CNOUT8tx_W6hTW0_LDKXpLQ5iIuNhxPqJ3FQKiMH5o73wUouhSZv51eOzQu9D33ywjmkhYCakUsPfjQixDIFn0MapEm6yi4AEEG3DxySZPhE14ihXedH4XCQua2hhB2LZVsHJm7_ygiNv9_dsvrpB9mf-xNQ";
+        private readonly string _bearerToken = "eyJraWQiOiJCSHhSWWpqenV6N1JpKzM4dVlCWkJcLzYwR3FIcVhqQjI2bHAxOVd6dTIwaz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiY3VzdG9tOnV0bV9zcmMiOiJOQSIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTEuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0xX2xNc0lHNmQ3ZyIsImNvZ25pdG86dXNlcm5hbWUiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiI4NDZmMzAzNi1lNjg2LTRlNDMtYjUyYy00NmFmYTE4OTM4YTciLCJnaXZlbl9uYW1lIjoidGVzdCIsImF1ZCI6IjU5cW0xbDRnamlnczc2bzVqOTJucDQ2MGp0IiwiZXZlbnRfaWQiOiIzOTk3Y2Q1OS1kMGRmLTRmYmEtYTY1Yi0zYzI3YTAzZGU0Y2YiLCJ0b2tlbl91c2UiOiJpZCIsImF1dGhfdGltZSI6MTcyNjc2MDA5NiwiZXhwIjoxNzI2NzYzNjk2LCJpYXQiOjE3MjY3NjAwOTYsImZhbWlseV9uYW1lIjoidGVzdCIsImVtYWlsIjoicGVkaWZhYzI4M0BjZXRub2IuY29tIn0.lG9sZXT8TSS90uC8CcINFJe9X--DpBHiM5JtWl-DvZC2AHEnlC7QpEuSIvBRrkutTX0g75uMCSiicGub8jLKGZnElDRooKKQc4Zxw0j_UPBLNywa5RzpwS5Y1CkU2l1Sm17FiJJxBhWQCJ8OtSD9LRfXw1qEKMQHeR3RW0bKvCLV15O14P4yTBI33OgqkY3iImNIjAiPDOsaVH5GlV4cXu0Kqg14CIXyLli5R9NemLl9cxafLMZGVji_q8mffzFBjKQTjFMAE649rHAZgcFvn7LETA-9ZWxQ2o2P2oDqGeETBmj57hiwSu-BGwkNhbALrT669UtTWn6QPGuI8bal-w";
         private string _documentId;
 
         public MainWindow()
@@ -45,8 +45,6 @@ namespace KeyboardTrackingApp
 
             // Initialize SuggestionsControl
             _suggestionsControl = new SuggestionsControl();
-            _suggestionsControl.SuggestionAccepted += OnSuggestionAccepted;
-            _suggestionsControl.SuggestionCancelled += OnSuggestionCancelled;
             SuggestionsPopup.Child = _suggestionsControl;
 
             _windowCheckTimer = new DispatcherTimer
@@ -198,7 +196,6 @@ namespace KeyboardTrackingApp
 
                         Dispatcher.Invoke(() =>
                         {
-                            HighlightTeh();
                             CheckForIncorrectWords();
                         });
 
@@ -229,7 +226,6 @@ namespace KeyboardTrackingApp
             }
             else if (e == Keys.Space || e == Keys.OemPeriod)
             {
-                CheckWord();
                 _currentWord.Clear();
                 _allText.Append((char)e);
             }
@@ -264,74 +260,16 @@ namespace KeyboardTrackingApp
             }
         }
 
-        private void CheckWord()
-        {
-            string word = _currentWord.ToString();
-            if (word.Equals("teh" , StringComparison.OrdinalIgnoreCase))
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    _suggestionsControl.SetSuggestion("The");
-                    SuggestionsPopup.IsOpen = true;
-                });
-            }
-            else
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    _suggestionsControl.SetSuggestion(null);
-                    SuggestionsPopup.IsOpen = false;
-                });
-            }
-        }
-
-        private void OnSuggestionAccepted(object sender , EventArgs e)
-        {
-            ReplaceWordInActiveApplication("The");
-            UpdateTextAndClosePopup("The");
-        }
-
-        private void OnSuggestionCancelled(object sender , EventArgs e)
-        {
-            UpdateTextAndClosePopup("teh");
-        }
-
         private void UpdateTextAndClosePopup(string word)
         {
-            ReplaceWordInActiveApplication(word);
-
             _currentWord.Clear();
 
             Dispatcher.Invoke(() =>
             {
-                HighlightTeh();
                 CheckForIncorrectWords();
                 _suggestionsControl.SetSuggestion(null);
                 SuggestionsPopup.IsOpen = false;
             });
-        }
-
-        private void HighlightTeh()
-        {
-            string fullText = _allText.ToString();
-            CurrentWordTextBlock.Inlines.Clear();
-
-            string[] parts = fullText.Split(new[] { "teh" } , StringSplitOptions.None);
-
-            for (int i = 0 ; i < parts.Length ; i++)
-            {
-                CurrentWordTextBlock.Inlines.Add(new Run(parts[i]));
-
-                if (i < parts.Length - 1)
-                {
-                    var incorrectWord = new Run("teh")
-                    {
-                        Background = Brushes.Red ,
-                        Foreground = Brushes.White
-                    };
-                    CurrentWordTextBlock.Inlines.Add(incorrectWord);
-                }
-            }
         }
 
         private async void CheckForIncorrectWords()
@@ -393,72 +331,12 @@ namespace KeyboardTrackingApp
 
         private void Overlay_SuggestionAccepted(object sender , string suggestion)
         {
-            ReplaceWordInActiveApplication(suggestion);
             CheckForIncorrectWords(); // Recheck for incorrect words after replacement
         }
 
         private void UpdateErrorCount(int errorCount)
         {
             _floatingPoint.UpdateErrorCount(errorCount);
-        }
-
-        private Point GetPositionOfWord(string word)
-        {
-            IntPtr notepadHandle = NativeMethods.GetForegroundWindow();
-            IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
-            if (editHandle != IntPtr.Zero)
-            {
-                string notepadText = GetNotepadContent();
-                int index = notepadText.IndexOf(word , StringComparison.OrdinalIgnoreCase);
-                if (index != -1)
-                {
-                    // Use SendMessage to get the position of the word
-                    IntPtr pos = NativeMethods.SendMessage(editHandle , NativeMethods.EM_POSFROMCHAR , (IntPtr)index , IntPtr.Zero);
-                    if (pos != IntPtr.Zero)
-                    {
-                        int x = pos.ToInt32() & 0xFFFF; // X position is in low-order word
-                        int y = ( pos.ToInt32() >> 16 ) & 0xFFFF; // Y position is in high-order word
-                        return new Point(x , y);
-                    }
-                }
-            }
-            return Point.Empty;
-        }
-
-        private void ReplaceWordInActiveApplication(string replacementWord)
-        {
-            IntPtr hWnd = NativeMethods.GetForegroundWindow();
-            if (hWnd == IntPtr.Zero)
-                return;
-
-            NativeMethods.SetForegroundWindow(hWnd);
-
-            // Get the current content
-            string currentContent = _allText.ToString();
-
-            // Find the last occurrence of "teh"
-            int lastIndex = currentContent.LastIndexOf("teh" , StringComparison.OrdinalIgnoreCase);
-            if (lastIndex == -1)
-                return; // "teh" not found, no replacement needed
-
-            // Calculate how many backspaces are needed
-            int backspaces = currentContent.Length - lastIndex - 3;
-
-            // Send backspace keys to remove "teh"
-            for (int i = 0 ; i < backspaces + 3 ; i++)
-            {
-                SendKeys(Keys.Back);
-            }
-
-            // Send the replacement word
-            foreach (char c in replacementWord)
-            {
-                SendKeys((Keys)char.ToUpper(c));
-            }
-
-            // Update our internal text representation
-            _allText.Remove(lastIndex , 3);
-            _allText.Insert(lastIndex , replacementWord);
         }
 
         private void SendKeys(Keys key)
@@ -479,7 +357,6 @@ namespace KeyboardTrackingApp
                     _currentWord.Clear();
                     Dispatcher.Invoke(() =>
                     {
-                        HighlightTeh();
                         CheckForIncorrectWords();
                     });
                 }
@@ -519,73 +396,5 @@ namespace KeyboardTrackingApp
             _overlay.Close();
             _keyboardHook.Dispose();
         }
-    }
-
-    public class SpellCheckRequest
-    {
-        public string text { get; set; }
-        public string docId { get; set; }
-    }
-
-    public class ApiResponse
-    {
-        public SpellCheckResponse spellCheckResponse { get; set; }
-        public GrammarResponse grammarResponse { get; set; }
-        public PhrasingResponse phrasingResponse { get; set; }
-        public List<object> termSuggestions { get; set; }
-        public TafqitResponse tafqitResponse { get; set; }
-        public OtherSuggestions otherSuggestions { get; set; }
-        public int teaserBalance { get; set; }
-    }
-
-    public class SpellCheckResponse
-    {
-        public string version { get; set; }
-        public SpellCheckResults results { get; set; }
-    }
-
-    public class SpellCheckResults
-    {
-        public List<FlaggedToken> flagged_tokens { get; set; }
-    }
-
-    public class FlaggedToken
-    {
-        public string original_word { get; set; }
-        public int start_index { get; set; }
-        public int end_index { get; set; }
-        public List<Suggestion> suggestions { get; set; }
-        public string arabic_reason { get; set; }
-        public string lang { get; set; }
-    }
-
-    public class Suggestion
-    {
-        public string text { get; set; }
-        public string confidence { get; set; }
-        public List<string> reasons { get; set; }
-    }
-
-    public class GrammarResponse
-    {
-        public string version { get; set; }
-        public object results { get; set; }
-    }
-
-    public class PhrasingResponse
-    {
-        public string version { get; set; }
-        public object results { get; set; }
-    }
-
-    public class TafqitResponse
-    {
-        public object results { get; set; }
-    }
-
-    public class OtherSuggestions
-    {
-        public string version { get; set; }
-        public object results { get; set; }
     }
 }

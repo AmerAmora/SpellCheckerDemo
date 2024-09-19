@@ -2,7 +2,7 @@
 
 public class Suggestion
 {
-    public string Text { get; set; }
-    public string Confidence { get; set; }
-    public List<string> Reasons { get; set; }
+    public string text { get; set; }
+    public string confidence { get; set; }
+    public List<string> reasons { get; set; }
 }

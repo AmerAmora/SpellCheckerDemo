@@ -2,8 +2,8 @@
 
 namespace SpellCheckerDemo;
 
-class SpellCheckResponse
+public class SpellCheckResponse
 {
     public string Version { get; set; }
-    public Results Results { get; set; }
+    public Results results { get; set; }
 }
