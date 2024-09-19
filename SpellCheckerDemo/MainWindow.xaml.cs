@@ -308,6 +308,7 @@ namespace KeyboardTrackingApp
             List<(System.Windows.Point screenPosition, double width)> underlines = new List<(System.Windows.Point, double)>();
 
             int index = 0;
+            int errorCount = 0;
             while (( index = text.IndexOf("teh" , index , StringComparison.OrdinalIgnoreCase) ) != -1)
             {
                 IntPtr notepadHandle = NativeMethods.GetForegroundWindow();
@@ -324,7 +325,7 @@ namespace KeyboardTrackingApp
 
                     underlines.Add((new System.Windows.Point(clientPoint.X , clientPoint.Y + 20), 26));
                 }
-
+                errorCount++;
                 index += 3; // Move past the current "teh"
             }
 
@@ -341,7 +342,13 @@ namespace KeyboardTrackingApp
                     _overlay.DrawUnderlines(new List<(System.Windows.Point, double)>()); // Clear all underlines
                     Console.WriteLine("No 'teh' found in text");
                 }
+                UpdateErrorCount(errorCount);
             });
+        }
+
+        private void UpdateErrorCount(int errorCount)
+        {
+            _floatingPoint.UpdateErrorCount(errorCount);
         }
 
         private Point GetPositionOfWord(string word)

@@ -1,8 +1,9 @@
-﻿using System.Runtime.InteropServices;
+﻿using System;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
-using System.Diagnostics;
 
 namespace SpellCheckerDemo
 {
@@ -27,17 +28,15 @@ namespace SpellCheckerDemo
                 }
             };
 
-            this.MouseDoubleClick += (s , e) =>
-            {
-                isUserDragging = false;
-                HandleDoubleClick(s , e);
-            };
+            this.MouseDoubleClick += HandleDoubleClick;
 
             SetupCaretTracking();
         }
 
         private void HandleDoubleClick(object sender , MouseButtonEventArgs e)
         {
+            isUserDragging = false;
+
             if (!isAuthenticated)
             {
                 OpenLoginPage();
@@ -85,6 +84,26 @@ namespace SpellCheckerDemo
             timer.Start();
         }
 
+        public void UpdateErrorCount(int errorCount)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                if (errorCount > 0)
+                {
+                    // Show error count
+                    LogoImage.Visibility = Visibility.Collapsed;
+                    ErrorCountGrid.Visibility = Visibility.Visible;
+                    ErrorCountText.Text = errorCount.ToString();
+                }
+                else
+                {
+                    // Show the original logo
+                    LogoImage.Visibility = Visibility.Visible;
+                    ErrorCountGrid.Visibility = Visibility.Collapsed;
+                }
+            });
+        }
+
         private void Timer_Tick(object sender , EventArgs e)
         {
             if (isUserDragging) return;
@@ -92,15 +111,20 @@ namespace SpellCheckerDemo
             IntPtr foregroundWindow = NativeMethods.GetForegroundWindow();
             uint processId;
             uint threadId = NativeMethods.GetWindowThreadProcessId(foregroundWindow , out processId);
+
             NativeMethods.GUITHREADINFO guiThreadInfo = new NativeMethods.GUITHREADINFO();
             guiThreadInfo.cbSize = Marshal.SizeOf(guiThreadInfo);
+
             if (NativeMethods.GetGUIThreadInfo(threadId , ref guiThreadInfo))
             {
                 NativeMethods.Rectangle caretRect = guiThreadInfo.rcCaret;
-                NativeMethods.POINT screenPoint;
-                screenPoint.X = caretRect.Left;
-                screenPoint.Y = caretRect.Top;
+                NativeMethods.POINT screenPoint = new NativeMethods.POINT
+                {
+                    X = caretRect.Left ,
+                    Y = caretRect.Top
+                };
                 NativeMethods.ClientToScreen(guiThreadInfo.hwndCaret , ref screenPoint);
+
                 this.Left = screenPoint.X + 10;
                 this.Top = screenPoint.Y + 10;
             }
