@@ -305,16 +305,13 @@ namespace KeyboardTrackingApp
         private void CheckForIncorrectWords()
         {
             string text = _allText.ToString();
-            int index = text.LastIndexOf("teh" , StringComparison.OrdinalIgnoreCase);
+            List<(System.Windows.Point screenPosition, double width)> underlines = new List<(System.Windows.Point, double)>();
 
-            Console.WriteLine($"Checking for 'teh'. Found at index: {index}");
-
-            if (index != -1)
+            int index = 0;
+            while (( index = text.IndexOf("teh" , index , StringComparison.OrdinalIgnoreCase) ) != -1)
             {
                 IntPtr notepadHandle = NativeMethods.GetForegroundWindow();
                 IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
-
-                Console.WriteLine($"Notepad handle: {notepadHandle}, Edit handle: {editHandle}");
 
                 if (editHandle != IntPtr.Zero)
                 {
@@ -322,32 +319,29 @@ namespace KeyboardTrackingApp
                     int x = ( charPos.ToInt32() & 0xFFFF );
                     int y = ( ( charPos.ToInt32() >> 16 ) & 0xFFFF );
 
-                    Console.WriteLine($"Character position in client coordinates: {x}, {y}");
-
                     POINT clientPoint = new POINT { X = x , Y = y };
                     NativeMethods.ClientToScreen(editHandle , ref clientPoint);
 
-                    Console.WriteLine($"Character position in screen coordinates: {clientPoint.X}, {clientPoint.Y}");
+                    underlines.Add((new System.Windows.Point(clientPoint.X , clientPoint.Y + 20), 26));
+                }
 
-                    // Ensure this is called on the UI thread
-                    Application.Current.Dispatcher.Invoke(() =>
-                    {
-                        // Draw underline using GDI+
-                        _overlay.DrawUnderline(new System.Windows.Point(clientPoint.X , clientPoint.Y + 20) , 26);
-                        Console.WriteLine("Using GDI+ to draw underline.");
-                    });
+                index += 3; // Move past the current "teh"
+            }
+
+            // Ensure this is called on the UI thread
+            Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (underlines.Count > 0)
+                {
+                    _overlay.DrawUnderlines(underlines);
+                    Console.WriteLine($"Drew {underlines.Count} underlines.");
                 }
                 else
                 {
-                    Console.WriteLine("Failed to find Edit control in Notepad");
-                    _overlay.DrawUnderline(new System.Windows.Point(0 , 0) , 0); // Clear the underline
+                    _overlay.DrawUnderlines(new List<(System.Windows.Point, double)>()); // Clear all underlines
+                    Console.WriteLine("No 'teh' found in text");
                 }
-            }
-            else
-            {
-                Console.WriteLine("'teh' not found in text");
-                _overlay.DrawUnderline(new System.Windows.Point(0 , 0) , 0); // Clear the underline
-            }
+            });
         }
 
         private Point GetPositionOfWord(string word)

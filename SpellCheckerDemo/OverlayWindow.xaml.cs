@@ -20,27 +20,24 @@ namespace SpellCheckerDemo
             Native.SetWindowLong(hwnd , Native.GWL_EXSTYLE , extendedStyle | Native.WS_EX_TRANSPARENT | Native.WS_EX_LAYERED);
         }
 
-        public void DrawUnderline(Point screenPosition , double width)
+        public void DrawUnderlines(List<(Point screenPosition, double width)> underlines)
         {
             canvas.Children.Clear();
 
-            var line = new System.Windows.Shapes.Line
+            foreach (var (screenPosition, width) in underlines)
             {
-                X1 = 0 ,
-                Y1 = 2 ,
-                X2 = width ,
-                Y2 = 2 ,
-                Stroke = Brushes.Red ,
-                StrokeThickness = 2
-            };
+                var line = new System.Windows.Shapes.Line
+                {
+                    X1 = screenPosition.X - Left ,
+                    Y1 = screenPosition.Y - Top + 2 ,
+                    X2 = screenPosition.X - Left + width ,
+                    Y2 = screenPosition.Y - Top + 2 ,
+                    Stroke = Brushes.Red ,
+                    StrokeThickness = 2
+                };
 
-            canvas.Children.Add(line);
-
-            // Position the overlay window
-            Left = screenPosition.X;
-            Top = screenPosition.Y;
-            Width = width;
-            Height = 4; // Height of the underline
+                canvas.Children.Add(line);
+            }
         }
     }
 
