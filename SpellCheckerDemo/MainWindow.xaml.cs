@@ -7,6 +7,10 @@ using System.Windows.Threading;
 using SpellCheckerDemo;
 using Brushes = System.Windows.Media.Brushes;
 using Point = System.Drawing.Point;
+using System.Drawing;
+using System.Windows.Interop;
+using System.Windows.Media;
+using static NativeMethods;
 
 namespace KeyboardTrackingApp
 {
@@ -303,32 +307,46 @@ namespace KeyboardTrackingApp
             string text = _allText.ToString();
             int index = text.LastIndexOf("teh" , StringComparison.OrdinalIgnoreCase);
 
+            Console.WriteLine($"Checking for 'teh'. Found at index: {index}");
+
             if (index != -1)
             {
-                NativeMethods.RECT clientRect;
-                NativeMethods.GetClientRect(_lastActiveWindowHandle , out clientRect);
+                IntPtr notepadHandle = NativeMethods.GetForegroundWindow();
+                IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
 
-                NativeMethods.POINT point = new NativeMethods.POINT { X = 0 , Y = 0 };
-                NativeMethods.ClientToScreen(_lastActiveWindowHandle , ref point);
+                Console.WriteLine($"Notepad handle: {notepadHandle}, Edit handle: {editHandle}");
 
-                // Get the position of the word "teh"
-                Point tehPosition = GetPositionOfWord("teh");
-
-                if (tehPosition != Point.Empty)
+                if (editHandle != IntPtr.Zero)
                 {
-                    // Calculate the position of "teh" based on the actual text position
-                    var textRect = new Rect(point.X + tehPosition.X , point.Y + tehPosition.Y , 26 , 20);
+                    IntPtr charPos = NativeMethods.SendMessage(editHandle , NativeMethods.EM_POSFROMCHAR , (IntPtr)index , IntPtr.Zero);
+                    int x = ( charPos.ToInt32() & 0xFFFF );
+                    int y = ( ( charPos.ToInt32() >> 16 ) & 0xFFFF );
 
-                    _overlay.DrawUnderline(textRect);
+                    Console.WriteLine($"Character position in client coordinates: {x}, {y}");
+
+                    POINT clientPoint = new POINT { X = x , Y = y };
+                    NativeMethods.ClientToScreen(editHandle , ref clientPoint);
+
+                    Console.WriteLine($"Character position in screen coordinates: {clientPoint.X}, {clientPoint.Y}");
+
+                    // Ensure this is called on the UI thread
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        // Draw underline using GDI+
+                        _overlay.DrawUnderline(new System.Windows.Point(clientPoint.X , clientPoint.Y + 20) , 26);
+                        Console.WriteLine("Using GDI+ to draw underline.");
+                    });
                 }
                 else
                 {
-                    _overlay.DrawUnderline(new Rect(0 , 0 , 0 , 0)); // Clear the underline
+                    Console.WriteLine("Failed to find Edit control in Notepad");
+                    _overlay.DrawUnderline(new System.Windows.Point(0 , 0) , 0); // Clear the underline
                 }
             }
             else
             {
-                _overlay.DrawUnderline(new Rect(0 , 0 , 0 , 0)); // Clear the underline
+                Console.WriteLine("'teh' not found in text");
+                _overlay.DrawUnderline(new System.Windows.Point(0 , 0) , 0); // Clear the underline
             }
         }
 
