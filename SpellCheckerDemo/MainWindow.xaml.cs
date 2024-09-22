@@ -34,7 +34,7 @@ namespace KeyboardTrackingApp
         private OverlayWindow _overlay;
         private readonly HttpClient _httpClient;
         private readonly string _apiUrl = "https://api-stg.qalam.ai/test/go";
-        private readonly string _bearerToken = "eyJraWQiOiJCSHhSWWpqenV6N1JpKzM4dVlCWkJcLzYwR3FIcVhqQjI2bHAxOVd6dTIwaz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiY3VzdG9tOnV0bV9zcmMiOiJOQSIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTEuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0xX2xNc0lHNmQ3ZyIsImNvZ25pdG86dXNlcm5hbWUiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiI4NDZmMzAzNi1lNjg2LTRlNDMtYjUyYy00NmFmYTE4OTM4YTciLCJnaXZlbl9uYW1lIjoidGVzdCIsImF1ZCI6IjU5cW0xbDRnamlnczc2bzVqOTJucDQ2MGp0IiwiZXZlbnRfaWQiOiIzOTk3Y2Q1OS1kMGRmLTRmYmEtYTY1Yi0zYzI3YTAzZGU0Y2YiLCJ0b2tlbl91c2UiOiJpZCIsImF1dGhfdGltZSI6MTcyNjc2MDA5NiwiZXhwIjoxNzI2NzYzNjk2LCJpYXQiOjE3MjY3NjAwOTYsImZhbWlseV9uYW1lIjoidGVzdCIsImVtYWlsIjoicGVkaWZhYzI4M0BjZXRub2IuY29tIn0.lG9sZXT8TSS90uC8CcINFJe9X--DpBHiM5JtWl-DvZC2AHEnlC7QpEuSIvBRrkutTX0g75uMCSiicGub8jLKGZnElDRooKKQc4Zxw0j_UPBLNywa5RzpwS5Y1CkU2l1Sm17FiJJxBhWQCJ8OtSD9LRfXw1qEKMQHeR3RW0bKvCLV15O14P4yTBI33OgqkY3iImNIjAiPDOsaVH5GlV4cXu0Kqg14CIXyLli5R9NemLl9cxafLMZGVji_q8mffzFBjKQTjFMAE649rHAZgcFvn7LETA-9ZWxQ2o2P2oDqGeETBmj57hiwSu-BGwkNhbALrT669UtTWn6QPGuI8bal-w";
+        private readonly string _bearerToken = "eyJraWQiOiJCSHhSWWpqenV6N1JpKzM4dVlCWkJcLzYwR3FIcVhqQjI2bHAxOVd6dTIwaz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiY3VzdG9tOnV0bV9zcmMiOiJOQSIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTEuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0xX2xNc0lHNmQ3ZyIsImNvZ25pdG86dXNlcm5hbWUiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiI4NDZmMzAzNi1lNjg2LTRlNDMtYjUyYy00NmFmYTE4OTM4YTciLCJnaXZlbl9uYW1lIjoidGVzdCIsImF1ZCI6IjU5cW0xbDRnamlnczc2bzVqOTJucDQ2MGp0IiwiZXZlbnRfaWQiOiJlYTkxYWI2ZS0xMzJiLTQ0YmMtOTg2MC0yMTg5MDdjMmY3ZTYiLCJ0b2tlbl91c2UiOiJpZCIsImF1dGhfdGltZSI6MTcyNjk5NjA1MCwiZXhwIjoxNzI2OTk5NjUwLCJpYXQiOjE3MjY5OTYwNTAsImZhbWlseV9uYW1lIjoidGVzdCIsImVtYWlsIjoicGVkaWZhYzI4M0BjZXRub2IuY29tIn0.N6ipsokkaUUNwp6MO-V8ubmmnsutDd56yBBYNkZZyxa3M80_901_PRwrD0jmFLYqgqeI4_1FPpLPnEjRipHxVt1_QoXENrOQFFJ_qBpFtEw5pZ-AlbsvrltFHheC74t9BlSxqQqKuAtKs3PpAO2vcAAZ5xlIn_yOMUewI0LZLux1F9UOM0vPsVvQmn4L1c6tOI6CXWBFQzAhvhvN9X0FpIRUDO-PGyrzKMo_nYyMQeTW7xZIhQTTFdkQfOdkVRM4PB9Hf1SUnHUqCKUDlln_Z2gq0JbykFh8xfHGbh_Rgwp6oQlbM3WpxpFgby44ntb6GFloCVkf8o-RPt5x2uKl5g";
         private string _documentId;
 
         public MainWindow()
@@ -285,25 +285,42 @@ namespace KeyboardTrackingApp
 
             List<(System.Windows.Point screenPosition, double width, string incorrectWord, string suggestion)> underlines = new List<(System.Windows.Point, double, string, string)>();
 
-            foreach (var flaggedToken in apiResponse.spellCheckResponse.results.flagged_tokens)
-            {
-                IntPtr notepadHandle = NativeMethods.GetForegroundWindow();
-                IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
+            IntPtr notepadHandle = NativeMethods.GetForegroundWindow();
+            IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
 
-                if (editHandle != IntPtr.Zero)
+            if (editHandle != IntPtr.Zero)
+            {
+                IntPtr hdc = NativeMethods.GetDC(editHandle);
+                IntPtr hFont = NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETFONT , IntPtr.Zero , IntPtr.Zero);
+                IntPtr oldFont = NativeMethods.SelectObject(hdc , hFont);
+
+                foreach (var flaggedToken in apiResponse.spellCheckResponse.results.flagged_tokens)
                 {
-                    IntPtr charPos = NativeMethods.SendMessage(editHandle , NativeMethods.EM_POSFROMCHAR , (IntPtr)flaggedToken.start_index , IntPtr.Zero);
+                    int startIndex = flaggedToken.start_index;
+                    int endIndex = flaggedToken.end_index;
+                    string incorrectWord = text.Substring(startIndex , endIndex - startIndex);
+
+                    // Measure the text width
+                    NativeMethods.SIZE size;
+                    NativeMethods.GetTextExtentPoint32(hdc , incorrectWord , incorrectWord.Length , out size);
+
+                    // Get the position of the start of the word
+                    IntPtr charPos = NativeMethods.SendMessage(editHandle , NativeMethods.EM_POSFROMCHAR , (IntPtr)startIndex , IntPtr.Zero);
                     int x = ( charPos.ToInt32() & 0xFFFF );
                     int y = ( ( charPos.ToInt32() >> 16 ) & 0xFFFF );
 
-                    POINT clientPoint = new POINT { X = x , Y = y };
+                    // Adjust for RTL text
+                    x -= size.cx; // Move the starting point to the right edge of the word
+
+                    NativeMethods.POINT clientPoint = new NativeMethods.POINT { X = x , Y = y };
                     NativeMethods.ClientToScreen(editHandle , ref clientPoint);
 
-                    double width = ( flaggedToken.end_index - flaggedToken.start_index ) * 8; // Approximate width based on character count
-                    string incorrectWord = text.Substring(flaggedToken.start_index , flaggedToken.end_index - flaggedToken.start_index);
-                    string suggestion = flaggedToken.suggestions.FirstOrDefault().text ?? "";
-                    underlines.Add((new System.Windows.Point(clientPoint.X , clientPoint.Y + 20), width, incorrectWord, suggestion));
+                    string suggestion = flaggedToken.suggestions.FirstOrDefault()?.text ?? "";
+                    underlines.Add((new System.Windows.Point(clientPoint.X , clientPoint.Y + 20), size.cx, incorrectWord, suggestion));
                 }
+
+                NativeMethods.SelectObject(hdc , oldFont);
+                NativeMethods.ReleaseDC(editHandle , hdc);
             }
 
             Application.Current.Dispatcher.Invoke(() =>

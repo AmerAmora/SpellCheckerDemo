@@ -99,4 +99,25 @@ public static class NativeMethods
         public int Right;
         public int Bottom;
     }
+
+    public const int WM_GETFONT = 0x0031;
+
+    [DllImport("gdi32.dll")]
+    public static extern IntPtr SelectObject(IntPtr hdc , IntPtr hgdiobj);
+
+    [DllImport("gdi32.dll" , CharSet = CharSet.Unicode)]
+    public static extern bool GetTextExtentPoint32(IntPtr hdc , string lpString , int cbString , out SIZE lpSize);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetDC(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern int ReleaseDC(IntPtr hWnd , IntPtr hDC);
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct SIZE
+    {
+        public int cx;
+        public int cy;
+    }
 }
