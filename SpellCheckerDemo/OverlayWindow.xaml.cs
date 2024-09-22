@@ -15,8 +15,6 @@ namespace SpellCheckerDemo
         private List<(Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> _underlines;
         private Popup _suggestionPopup;
         private ListBox _suggestionListBox;
-        private Button _acceptButton;
-        private Button _cancelButton;
 
         public event EventHandler<(string suggestion, int startIndex, int endIndex)> SuggestionAccepted;
 
@@ -44,36 +42,16 @@ namespace SpellCheckerDemo
                 Placement = PlacementMode.MousePoint
             };
 
-            var popupContent = new StackPanel
-            {
-                Background = Brushes.White ,
-                Orientation = Orientation.Vertical
-            };
-
             _suggestionListBox = new ListBox
             {
-                Margin = new Thickness(5)
+                Margin = new Thickness(5) ,
+                BorderThickness = new Thickness(1) ,
+                BorderBrush = Brushes.Gray ,
+                Background = Brushes.White
             };
+            _suggestionListBox.SelectionChanged += SuggestionListBox_SelectionChanged;
 
-            _acceptButton = new Button
-            {
-                Content = "Accept" ,
-                Margin = new Thickness(5)
-            };
-            _acceptButton.Click += AcceptButton_Click;
-
-            _cancelButton = new Button
-            {
-                Content = "Cancel" ,
-                Margin = new Thickness(5)
-            };
-            _cancelButton.Click += CancelButton_Click;
-
-            popupContent.Children.Add(_suggestionListBox);
-            popupContent.Children.Add(_acceptButton);
-            popupContent.Children.Add(_cancelButton);
-
-            _suggestionPopup.Child = popupContent;
+            _suggestionPopup.Child = _suggestionListBox;
         }
 
         public void DrawUnderlines(List<(Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> underlines)
@@ -106,6 +84,16 @@ namespace SpellCheckerDemo
                 _suggestionListBox.ItemsSource = suggestions;
                 _suggestionPopup.Tag = (incorrectWord, suggestions, startIndex, endIndex);
                 _suggestionPopup.IsOpen = true;
+            }
+        }
+
+        private void SuggestionListBox_SelectionChanged(object sender , SelectionChangedEventArgs e)
+        {
+            if (_suggestionListBox.SelectedItem is string selectedSuggestion &&
+                _suggestionPopup.Tag is (string incorrectWord, List<string> suggestions, int startIndex, int endIndex))
+            {
+                SuggestionAccepted?.Invoke(this , (selectedSuggestion, startIndex, endIndex));
+                _suggestionPopup.IsOpen = false;
             }
         }
 
