@@ -53,13 +53,22 @@ public static class NativeMethods
 
     [DllImport("user32.dll")]
     public static extern bool GetGUIThreadInfo(uint idThread , ref GUITHREADINFO lpgui);
+    [DllImport("user32.dll")]
+    public static extern bool EnumWindows(EnumWindowsProc enumProc , IntPtr lParam);
 
+    [DllImport("user32.dll" , SetLastError = true)]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd , out int lpdwProcessId);
+
+
+    public delegate bool EnumWindowsProc(IntPtr hWnd , IntPtr lParam);
     public const int EM_POSFROMCHAR = 0xD6;
     public const uint WM_GETTEXT = 0x000D;
     public const uint WM_GETTEXTLENGTH = 0x000E;
     public const int WM_KEYDOWN = 0x0100;
     public const int WM_KEYUP = 0x0101;
     public const int KEYEVENTF_KEYUP = 0x0002;
+    public const Int32 WM_CHAR = 0x0102;
+    public const int EM_SETSEL = 0x00B1;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT

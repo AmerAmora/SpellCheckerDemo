@@ -12,13 +12,13 @@ namespace SpellCheckerDemo
 {
     public partial class OverlayWindow : Window
     {
-        private List<(Point screenPosition, double width, string incorrectWord, string suggestion)> _underlines;
+        private List<(Point screenPosition, double width, string incorrectWord, string suggestion, int startIndex, int endIndex)> _underlines;
         private Popup _suggestionPopup;
         private TextBlock _suggestionTextBlock;
         private Button _acceptButton;
         private Button _cancelButton;
 
-        public event EventHandler<string> SuggestionAccepted;
+        public event EventHandler<(string suggestion, int startIndex, int endIndex)> SuggestionAccepted;
 
         public OverlayWindow()
         {
@@ -76,12 +76,12 @@ namespace SpellCheckerDemo
             _suggestionPopup.Child = popupContent;
         }
 
-        public void DrawUnderlines(List<(Point screenPosition, double width, string incorrectWord, string suggestion)> underlines)
+        public void DrawUnderlines(List<(Point screenPosition, double width, string incorrectWord, string suggestion, int startIndex, int endIndex)> underlines)
         {
             _underlines = underlines;
             canvas.Children.Clear();
 
-            foreach (var (screenPosition, width, incorrectWord, suggestion) in underlines)
+            foreach (var (screenPosition, width, incorrectWord, suggestion, startIndex, endIndex) in underlines)
             {
                 var line = new Line
                 {
@@ -91,7 +91,7 @@ namespace SpellCheckerDemo
                     Y2 = screenPosition.Y - Top + 2 ,
                     Stroke = Brushes.Red ,
                     StrokeThickness = 2 ,
-                    Tag = (incorrectWord, suggestion)
+                    Tag = (incorrectWord, suggestion, startIndex, endIndex)
                 };
 
                 line.MouseLeftButtonDown += Line_MouseLeftButtonDown;
@@ -101,19 +101,19 @@ namespace SpellCheckerDemo
 
         private void Line_MouseLeftButtonDown(object sender , MouseButtonEventArgs e)
         {
-            if (sender is Line line && line.Tag is (string incorrectWord, string suggestion))
+            if (sender is Line line && line.Tag is (string incorrectWord, string suggestion, int startIndex, int endIndex))
             {
                 _suggestionTextBlock.Text = $"Suggestion: {suggestion}";
-                _suggestionPopup.Tag = (incorrectWord, suggestion);
+                _suggestionPopup.Tag = (incorrectWord, suggestion, startIndex, endIndex);
                 _suggestionPopup.IsOpen = true;
             }
         }
 
         private void AcceptButton_Click(object sender , RoutedEventArgs e)
         {
-            if (_suggestionPopup.Tag is (string incorrectWord, string suggestion))
+            if (_suggestionPopup.Tag is (string incorrectWord, string suggestion, int startIndex, int endIndex))
             {
-                SuggestionAccepted?.Invoke(this , suggestion);
+                SuggestionAccepted?.Invoke(this , (suggestion, startIndex, endIndex));
             }
             _suggestionPopup.IsOpen = false;
         }
