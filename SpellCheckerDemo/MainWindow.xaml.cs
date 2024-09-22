@@ -34,7 +34,7 @@ namespace KeyboardTrackingApp
         private OverlayWindow _overlay;
         private readonly HttpClient _httpClient;
         private readonly string _apiUrl = "https://api-stg.qalam.ai/test/go";
-        private readonly string _bearerToken = "eyJraWQiOiJCSHhSWWpqenV6N1JpKzM4dVlCWkJcLzYwR3FIcVhqQjI2bHAxOVd6dTIwaz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiY3VzdG9tOnV0bV9zcmMiOiJOQSIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTEuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0xX2xNc0lHNmQ3ZyIsImNvZ25pdG86dXNlcm5hbWUiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiI4NDZmMzAzNi1lNjg2LTRlNDMtYjUyYy00NmFmYTE4OTM4YTciLCJnaXZlbl9uYW1lIjoidGVzdCIsImF1ZCI6IjU5cW0xbDRnamlnczc2bzVqOTJucDQ2MGp0IiwiZXZlbnRfaWQiOiI1OTdkYTg1My1hYWVlLTQ4ODgtODI4Ni1hMDRlMjY5OTExYTEiLCJ0b2tlbl91c2UiOiJpZCIsImF1dGhfdGltZSI6MTcyNzAwMzczOSwiZXhwIjoxNzI3MDA3MzM5LCJpYXQiOjE3MjcwMDM3MzksImZhbWlseV9uYW1lIjoidGVzdCIsImVtYWlsIjoicGVkaWZhYzI4M0BjZXRub2IuY29tIn0.QkKgRlMZWEVgX4OyXE5iSB3vGCCL9MKOAEJJL_MVOGmW5P4dEstE7yAwx2XnP5IVkE006UNnD3i_OsVRwZhbii2ekZ23Qs6lIJRmIfCjyBf_9WlWk9TGc3Kew2N9VTLvK1StkSjxr2DwGare1T2dPRlYL-4lua1EWEgHIZBSxwkDe7d2JJkILmxo8gTzSpgwTpQBU_D1sUKzsQsBU-wcV670HDnAW7ECz5c2T8J0n9kDYOwnetR2PnudnBveIWffzk3VmvDFYO_SvDn_b3z-nqI_RkcMsgZubfo5M0BJvhQwRD4Rb-wmrkWaCy7xGJbMBgr9DZb0fM_m5WFY3-hXiQ";
+        private readonly string _bearerToken = "eyJraWQiOiJCSHhSWWpqenV6N1JpKzM4dVlCWkJcLzYwR3FIcVhqQjI2bHAxOVd6dTIwaz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiY3VzdG9tOnV0bV9zcmMiOiJOQSIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTEuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0xX2xNc0lHNmQ3ZyIsImNvZ25pdG86dXNlcm5hbWUiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiI4NDZmMzAzNi1lNjg2LTRlNDMtYjUyYy00NmFmYTE4OTM4YTciLCJnaXZlbl9uYW1lIjoidGVzdCIsImF1ZCI6IjU5cW0xbDRnamlnczc2bzVqOTJucDQ2MGp0IiwiZXZlbnRfaWQiOiI5MGE1MDU3YS03MDllLTQ4MjYtYWRkNS03NjNjMTc1MmIwNGMiLCJ0b2tlbl91c2UiOiJpZCIsImF1dGhfdGltZSI6MTcyNzAxMTgxOCwiZXhwIjoxNzI3MDE1NDE4LCJpYXQiOjE3MjcwMTE4MTgsImZhbWlseV9uYW1lIjoidGVzdCIsImVtYWlsIjoicGVkaWZhYzI4M0BjZXRub2IuY29tIn0.Eogpx1gLDc2wbhIaePGVqOYC4S-876LSk-YpIOB5BHVk-seut2LkxZRAHHOxNR4z6dNNerpr2TtExHtQhidaZKe5xpTnr99eU683x-ekQMeD_UHIqQL2FSrmiARGZg9Dx6Kk_xw_DYQs0a5R9IwlZPGg7L6zvq-YFJErnQx0dkbJjSrN8WliaaC-d7HXJSJNKdYNvHv3SrQyaWDWy5c_bLpdrEJ4A0z1yAwZBTEj2g1cOAqRBpG6TKhlsYnubnO5h1tKKgF8iBmch1pm89K2jR7NtunlxY0EvZZU6TJdDUQbFSWGpreclt76tSM0NTHt8AwYEgpGqfh3SEaMXisa6g";
         private string _documentId;
 
         public MainWindow()
@@ -151,6 +151,8 @@ namespace KeyboardTrackingApp
 
             if (apiResponse?.spellCheckResponse?.results?.flagged_tokens == null)
             {
+                UpdateErrorCount(0);
+                _overlay.DrawUnderlines(new List<(System.Windows.Point, double, string, string, int, int)>()); // Clear all underlines
                 Console.WriteLine("No flagged tokens found or API response was null.");
                 return;
             }
@@ -198,7 +200,7 @@ namespace KeyboardTrackingApp
             Application.Current.Dispatcher.Invoke(() =>
             {
                 if (underlines.Count > 0)
-                {
+               {
                     _overlay.DrawUnderlines(underlines);
                     Console.WriteLine($"Drew {underlines.Count} underlines.");
                 }
