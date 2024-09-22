@@ -1,7 +1,7 @@
-﻿<Window x:Class="KeyboardTrackingApp.MainWindow"
+﻿<Window x:Class="SpellCheckerDemo.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:local="clr-namespace:KeyboardTrackingApp"
+        xmlns:local="clr-namespace:SpellCheckerDemo"
         Title="Spell Check Assistant" Height="200" Width="400" Topmost="True">
     <Grid>
         <TextBlock Name="CurrentWordTextBlock" Margin="10" TextWrapping="Wrap" />

@@ -1,6 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
@@ -30,8 +28,8 @@ namespace SpellCheckerDemo
             Background = Brushes.Transparent;
 
             var hwnd = new WindowInteropHelper(this).Handle;
-            var extendedStyle = Native.GetWindowLong(hwnd , Native.GWL_EXSTYLE);
-            Native.SetWindowLong(hwnd , Native.GWL_EXSTYLE , extendedStyle | Native.WS_EX_TRANSPARENT | Native.WS_EX_LAYERED);
+            var extendedStyle = NativeMethods.GetWindowLong(hwnd , NativeMethods.GWL_EXSTYLE);
+            NativeMethods.SetWindowLong(hwnd , NativeMethods.GWL_EXSTYLE , extendedStyle | NativeMethods.WS_EX_TRANSPARENT | NativeMethods.WS_EX_LAYERED);
 
             InitializeSuggestionPopup();
         }
@@ -122,18 +120,5 @@ namespace SpellCheckerDemo
         {
             _suggestionPopup.IsOpen = false;
         }
-    }
-
-    public static class Native
-    {
-        public const int GWL_EXSTYLE = -20;
-        public const int WS_EX_TRANSPARENT = 0x00000020;
-        public const int WS_EX_LAYERED = 0x00080000;
-
-        [System.Runtime.InteropServices.DllImport("user32.dll")]
-        public static extern int GetWindowLong(IntPtr hwnd , int index);
-
-        [System.Runtime.InteropServices.DllImport("user32.dll")]
-        public static extern int SetWindowLong(IntPtr hwnd , int index , int newStyle);
     }
 }

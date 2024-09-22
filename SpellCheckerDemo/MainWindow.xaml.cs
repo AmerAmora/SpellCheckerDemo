@@ -1,22 +1,15 @@
 ﻿using System.Diagnostics;
 using System.Text;
 using System.Windows;
-using System.Windows.Documents;
 using Keys = System.Windows.Forms.Keys;
 using System.Windows.Threading;
-using SpellCheckerDemo;
-using Brushes = System.Windows.Media.Brushes;
-using Point = System.Drawing.Point;
-using System.Drawing;
-using System.Windows.Interop;
-using System.Windows.Media;
 using static NativeMethods;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using Newtonsoft.Json;
 using SpellCheckerDemo.Models;
 
-namespace KeyboardTrackingApp
+namespace SpellCheckerDemo
 {
     public partial class MainWindow : Window
     {
@@ -34,8 +27,9 @@ namespace KeyboardTrackingApp
         private OverlayWindow _overlay;
         private readonly HttpClient _httpClient;
         private readonly string _apiUrl = "https://api-stg.qalam.ai/test/go";
-        private readonly string _bearerToken = "eyJraWQiOiJCSHhSWWpqenV6N1JpKzM4dVlCWkJcLzYwR3FIcVhqQjI2bHAxOVd6dTIwaz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiY3VzdG9tOnV0bV9zcmMiOiJOQSIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTEuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0xX2xNc0lHNmQ3ZyIsImNvZ25pdG86dXNlcm5hbWUiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiI4NDZmMzAzNi1lNjg2LTRlNDMtYjUyYy00NmFmYTE4OTM4YTciLCJnaXZlbl9uYW1lIjoidGVzdCIsImF1ZCI6IjU5cW0xbDRnamlnczc2bzVqOTJucDQ2MGp0IiwiZXZlbnRfaWQiOiIzOTk3Y2Q1OS1kMGRmLTRmYmEtYTY1Yi0zYzI3YTAzZGU0Y2YiLCJ0b2tlbl91c2UiOiJpZCIsImF1dGhfdGltZSI6MTcyNjc2MDA5NiwiZXhwIjoxNzI2NzYzNjk2LCJpYXQiOjE3MjY3NjAwOTYsImZhbWlseV9uYW1lIjoidGVzdCIsImVtYWlsIjoicGVkaWZhYzI4M0BjZXRub2IuY29tIn0.lG9sZXT8TSS90uC8CcINFJe9X--DpBHiM5JtWl-DvZC2AHEnlC7QpEuSIvBRrkutTX0g75uMCSiicGub8jLKGZnElDRooKKQc4Zxw0j_UPBLNywa5RzpwS5Y1CkU2l1Sm17FiJJxBhWQCJ8OtSD9LRfXw1qEKMQHeR3RW0bKvCLV15O14P4yTBI33OgqkY3iImNIjAiPDOsaVH5GlV4cXu0Kqg14CIXyLli5R9NemLl9cxafLMZGVji_q8mffzFBjKQTjFMAE649rHAZgcFvn7LETA-9ZWxQ2o2P2oDqGeETBmj57hiwSu-BGwkNhbALrT669UtTWn6QPGuI8bal-w";
+        private readonly string _bearerToken = "eyJraWQiOiJCSHhSWWpqenV6N1JpKzM4dVlCWkJcLzYwR3FIcVhqQjI2bHAxOVd6dTIwaz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiY3VzdG9tOnV0bV9zcmMiOiJOQSIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTEuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0xX2xNc0lHNmQ3ZyIsImNvZ25pdG86dXNlcm5hbWUiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiI4NDZmMzAzNi1lNjg2LTRlNDMtYjUyYy00NmFmYTE4OTM4YTciLCJnaXZlbl9uYW1lIjoidGVzdCIsImF1ZCI6IjU5cW0xbDRnamlnczc2bzVqOTJucDQ2MGp0IiwiZXZlbnRfaWQiOiI2NDc1YWYyZS04N2NjLTRlMjQtYjhiYS1hNjUwYTllODhmYTgiLCJ0b2tlbl91c2UiOiJpZCIsImF1dGhfdGltZSI6MTcyNjk5NDMyOSwiZXhwIjoxNzI2OTk3OTI5LCJpYXQiOjE3MjY5OTQzMjksImZhbWlseV9uYW1lIjoidGVzdCIsImVtYWlsIjoicGVkaWZhYzI4M0BjZXRub2IuY29tIn0.fprOSQpBx6UOHtG6W17pjg6QsLtiapf0QEMgIvQcqhXrC-nw20By0Un3FeHiDXyRnaVHfqSv3WEubUbEP3vrEDmg9tAdhsueRv7A-TtvQ2zVCwt8-MjQRCN1eYFewI4zgvrAzIZJwq6ceYoYFEJvPC4CkXaI7op4dFRO68OWtSZZHmB-IYs-FMiqeXI999piLAGPj-2eOq6FsvXpViA2n4-G5Gz4QCohFHh6a6eIipOkvsyI5ygvPOobZ2YRu-ro7b6c1m9KQhdab17mWsrLbtKCqy1xcxIfr7eH-mwmhURAMSTf8BD5NKV4wd7a9mxipd5sEGx7N0CZZUYphavtHw";
         private string _documentId;
+        private IntPtr _notepadHandle;
 
         public MainWindow()
         {
@@ -73,6 +67,7 @@ namespace KeyboardTrackingApp
 
             _overlay = new OverlayWindow();
             _overlay.Show();
+            _overlay.SuggestionAccepted += Overlay_SuggestionAccepted;
 
             this.Hide();
             _httpClient = new HttpClient();
@@ -102,6 +97,65 @@ namespace KeyboardTrackingApp
             return result;
         }
 
+        private void Overlay_SuggestionAccepted(object sender , string suggestion)
+        {
+            ReplaceWordInNotepad(suggestion);
+            CheckForIncorrectWords(); // Recheck for incorrect words after replacement
+        }
+
+        private void ReplaceWordInNotepad(string suggestion)
+        {
+            if (_notepadHandle != IntPtr.Zero)
+            {
+                IntPtr editHandle = NativeMethods.FindWindowEx(_notepadHandle , IntPtr.Zero , "Edit" , null);
+                if (editHandle != IntPtr.Zero)
+                {
+                    // Get the current caret position
+                    int caretPos = NativeMethods.SendMessage(editHandle , NativeMethods.EM_GETSEL , IntPtr.Zero , IntPtr.Zero).ToInt32() & 0xFFFF;
+
+                    // Find the start of the word
+                    int wordStart = caretPos;
+                    while (wordStart > 0)
+                    {
+                        NativeMethods.SendMessage(editHandle , NativeMethods.EM_SETSEL , (IntPtr)( wordStart - 1 ) , (IntPtr)wordStart);
+                        string charBefore = GetSelectedText(editHandle);
+                        if (string.IsNullOrWhiteSpace(charBefore)) break;
+                        wordStart--;
+                    }
+
+                    // Find the end of the word
+                    int wordEnd = caretPos;
+                    int textLength = NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETTEXTLENGTH , IntPtr.Zero , IntPtr.Zero).ToInt32();
+                    while (wordEnd < textLength)
+                    {
+                        NativeMethods.SendMessage(editHandle , NativeMethods.EM_SETSEL , (IntPtr)wordEnd , (IntPtr)( wordEnd + 1 ));
+                        string charAfter = GetSelectedText(editHandle);
+                        if (string.IsNullOrWhiteSpace(charAfter)) break;
+                        wordEnd++;
+                    }
+
+                    // Select the entire word
+                    NativeMethods.SendMessage(editHandle , NativeMethods.EM_SETSEL , (IntPtr)wordStart , (IntPtr)wordEnd);
+
+                    // Replace the selected text with the suggestion
+                    NativeMethods.SendMessage(editHandle , NativeMethods.EM_REPLACESEL , 1 , suggestion);
+
+                    // Update our local text buffer
+                    string notepadContent = GetNotepadContent();
+                    _allText.Clear();
+                    _allText.Append(notepadContent);
+                }
+            }
+        }
+
+        private string GetSelectedText(IntPtr editHandle)
+        {
+            int textLength = NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETTEXTLENGTH , IntPtr.Zero , IntPtr.Zero).ToInt32();
+            StringBuilder sb = new StringBuilder(textLength + 1);
+            NativeMethods.SendMessage(editHandle , NativeMethods.EM_GETSELTEXT , IntPtr.Zero , sb);
+            return sb.ToString();
+        }
+
         private void WindowCheckTimer_Tick(object sender , EventArgs e)
         {
             IntPtr foregroundWindow = NativeMethods.GetForegroundWindow();
@@ -117,12 +171,15 @@ namespace KeyboardTrackingApp
                     _lastActiveWindowTitle = newWindowTitle;
                     if (IsNotepad(newWindowTitle))
                     {
+                        _notepadHandle = foregroundWindow;
                         _notepadProcessId = GetProcessId(foregroundWindow);
-                        ReadWindowContent(foregroundWindow);
+                        ReadWindowContent(_notepadHandle);
                     }
                     else
                     {
-                        _notepadProcessId = null;
+                        //_notepadHandle = IntPtr.Zero;
+                        //_notepadProcessId = null;
+                        //MessageBox.Show("not notepad");
                     }
                 }
 
@@ -184,7 +241,7 @@ namespace KeyboardTrackingApp
                 IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
                 if (editHandle != IntPtr.Zero)
                 {
-                    int length = (int)NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETTEXTLENGTH , IntPtr.Zero , null);
+                    int length = (int)NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETTEXTLENGTH , IntPtr.Zero , IntPtr.Zero);
                     if (length > 0)
                     {
                         StringBuilder sb = new StringBuilder(length + 1);
@@ -285,25 +342,42 @@ namespace KeyboardTrackingApp
 
             List<(System.Windows.Point screenPosition, double width, string incorrectWord, string suggestion)> underlines = new List<(System.Windows.Point, double, string, string)>();
 
-            foreach (var flaggedToken in apiResponse.spellCheckResponse.results.flagged_tokens)
-            {
-                IntPtr notepadHandle = NativeMethods.GetForegroundWindow();
-                IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
+            IntPtr notepadHandle = NativeMethods.GetForegroundWindow();
+            IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
 
-                if (editHandle != IntPtr.Zero)
+            if (editHandle != IntPtr.Zero)
+            {
+                IntPtr hdc = NativeMethods.GetDC(editHandle);
+                IntPtr hFont = NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETFONT , IntPtr.Zero , IntPtr.Zero);
+                IntPtr oldFont = NativeMethods.SelectObject(hdc , hFont);
+
+                foreach (var flaggedToken in apiResponse.spellCheckResponse.results.flagged_tokens)
                 {
-                    IntPtr charPos = NativeMethods.SendMessage(editHandle , NativeMethods.EM_POSFROMCHAR , (IntPtr)flaggedToken.start_index , IntPtr.Zero);
+                    int startIndex = flaggedToken.start_index;
+                    int endIndex = flaggedToken.end_index;
+                    string incorrectWord = text.Substring(startIndex , endIndex - startIndex);
+
+                    // Measure the text width
+                    NativeMethods.SIZE size;
+                    NativeMethods.GetTextExtentPoint32(hdc , incorrectWord , incorrectWord.Length , out size);
+
+                    // Get the position of the start of the word
+                    IntPtr charPos = NativeMethods.SendMessage(editHandle , NativeMethods.EM_POSFROMCHAR , (IntPtr)startIndex , IntPtr.Zero);
                     int x = ( charPos.ToInt32() & 0xFFFF );
                     int y = ( ( charPos.ToInt32() >> 16 ) & 0xFFFF );
+
+                    // Adjust for RTL text
+                    x -= size.cx; // Move the starting point to the right edge of the word
 
                     POINT clientPoint = new POINT { X = x , Y = y };
                     NativeMethods.ClientToScreen(editHandle , ref clientPoint);
 
-                    double width = ( flaggedToken.end_index - flaggedToken.start_index ) * 8; // Approximate width based on character count
-                    string incorrectWord = text.Substring(flaggedToken.start_index , flaggedToken.end_index - flaggedToken.start_index);
-                    string suggestion = flaggedToken.suggestions.FirstOrDefault().text ?? "";
-                    underlines.Add((new System.Windows.Point(clientPoint.X , clientPoint.Y + 20), width, incorrectWord, suggestion));
+                    string suggestion = flaggedToken.suggestions.FirstOrDefault()?.text ?? "";
+                    underlines.Add((new System.Windows.Point(clientPoint.X , clientPoint.Y + 20), size.cx, incorrectWord, suggestion));
                 }
+
+                NativeMethods.SelectObject(hdc , oldFont);
+                NativeMethods.ReleaseDC(editHandle , hdc);
             }
 
             Application.Current.Dispatcher.Invoke(() =>
@@ -327,11 +401,6 @@ namespace KeyboardTrackingApp
             _overlay = new OverlayWindow();
             _overlay.Show();
             _overlay.SuggestionAccepted += Overlay_SuggestionAccepted;
-        }
-
-        private void Overlay_SuggestionAccepted(object sender , string suggestion)
-        {
-            CheckForIncorrectWords(); // Recheck for incorrect words after replacement
         }
 
         private void UpdateErrorCount(int errorCount)
@@ -365,20 +434,25 @@ namespace KeyboardTrackingApp
 
         private string GetNotepadContent()
         {
-            IntPtr notepadHandle = NativeMethods.GetForegroundWindow();
-            IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
-            if (editHandle != IntPtr.Zero)
+            if (_notepadHandle != IntPtr.Zero)
             {
-                int length = (int)NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETTEXTLENGTH , IntPtr.Zero , null);
-                if (length > 0)
+                // Find the Edit control within the Notepad window
+                IntPtr editHandle = NativeMethods.FindWindowEx(_notepadHandle , IntPtr.Zero , "Edit" , null);
+
+                if (editHandle != IntPtr.Zero)
                 {
-                    StringBuilder sb = new StringBuilder(length + 1);
-                    NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETTEXT , (IntPtr)sb.Capacity , sb);
-                    return sb.ToString();
+                    int length = (int)NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETTEXTLENGTH , IntPtr.Zero , IntPtr.Zero);
+                    if (length > 0)
+                    {
+                        StringBuilder sb = new StringBuilder(length + 1);
+                        NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETTEXT , (IntPtr)( length + 1 ) , sb);
+                        return sb.ToString();
+                    }
                 }
             }
             return string.Empty;
         }
+
         private void CheckKeyboardLayout()
         {
             IntPtr layout = NativeMethods.GetKeyboardLayout(0); // 0 means to get the layout of the current thread.
