@@ -12,9 +12,9 @@ namespace SpellCheckerDemo
 {
     public partial class OverlayWindow : Window
     {
-        private List<(Point screenPosition, double width, string incorrectWord, string suggestion, int startIndex, int endIndex)> _underlines;
+        private List<(Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> _underlines;
         private Popup _suggestionPopup;
-        private TextBlock _suggestionTextBlock;
+        private ListBox _suggestionListBox;
         private Button _acceptButton;
         private Button _cancelButton;
 
@@ -41,7 +41,7 @@ namespace SpellCheckerDemo
             _suggestionPopup = new Popup
             {
                 AllowsTransparency = true ,
-                Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint
+                Placement = PlacementMode.MousePoint
             };
 
             var popupContent = new StackPanel
@@ -50,7 +50,7 @@ namespace SpellCheckerDemo
                 Orientation = Orientation.Vertical
             };
 
-            _suggestionTextBlock = new TextBlock
+            _suggestionListBox = new ListBox
             {
                 Margin = new Thickness(5)
             };
@@ -69,19 +69,19 @@ namespace SpellCheckerDemo
             };
             _cancelButton.Click += CancelButton_Click;
 
-            popupContent.Children.Add(_suggestionTextBlock);
+            popupContent.Children.Add(_suggestionListBox);
             popupContent.Children.Add(_acceptButton);
             popupContent.Children.Add(_cancelButton);
 
             _suggestionPopup.Child = popupContent;
         }
 
-        public void DrawUnderlines(List<(Point screenPosition, double width, string incorrectWord, string suggestion, int startIndex, int endIndex)> underlines)
+        public void DrawUnderlines(List<(Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> underlines)
         {
             _underlines = underlines;
             canvas.Children.Clear();
 
-            foreach (var (screenPosition, width, incorrectWord, suggestion, startIndex, endIndex) in underlines)
+            foreach (var (screenPosition, width, incorrectWord, suggestions, startIndex, endIndex) in underlines)
             {
                 var line = new Line
                 {
@@ -91,7 +91,7 @@ namespace SpellCheckerDemo
                     Y2 = screenPosition.Y - Top + 2 ,
                     Stroke = Brushes.Red ,
                     StrokeThickness = 2 ,
-                    Tag = (incorrectWord, suggestion, startIndex, endIndex)
+                    Tag = (incorrectWord, suggestions, startIndex, endIndex)
                 };
 
                 line.MouseLeftButtonDown += Line_MouseLeftButtonDown;
@@ -101,19 +101,20 @@ namespace SpellCheckerDemo
 
         private void Line_MouseLeftButtonDown(object sender , MouseButtonEventArgs e)
         {
-            if (sender is Line line && line.Tag is (string incorrectWord, string suggestion, int startIndex, int endIndex))
+            if (sender is Line line && line.Tag is (string incorrectWord, List<string> suggestions, int startIndex, int endIndex))
             {
-                _suggestionTextBlock.Text = $"Suggestion: {suggestion}";
-                _suggestionPopup.Tag = (incorrectWord, suggestion, startIndex, endIndex);
+                _suggestionListBox.ItemsSource = suggestions;
+                _suggestionPopup.Tag = (incorrectWord, suggestions, startIndex, endIndex);
                 _suggestionPopup.IsOpen = true;
             }
         }
 
         private void AcceptButton_Click(object sender , RoutedEventArgs e)
         {
-            if (_suggestionPopup.Tag is (string incorrectWord, string suggestion, int startIndex, int endIndex))
+            if (_suggestionPopup.Tag is (string incorrectWord, List<string> suggestions, int startIndex, int endIndex) &&
+                _suggestionListBox.SelectedItem is string selectedSuggestion)
             {
-                SuggestionAccepted?.Invoke(this , (suggestion, startIndex, endIndex));
+                SuggestionAccepted?.Invoke(this , (selectedSuggestion, startIndex, endIndex));
             }
             _suggestionPopup.IsOpen = false;
         }
