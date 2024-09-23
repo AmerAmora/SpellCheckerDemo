@@ -15,6 +15,8 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using Newtonsoft.Json;
 using SpellCheckerDemo.Models;
+using static System.Net.Mime.MediaTypeNames;
+using System.Threading;
 
 namespace KeyboardTrackingApp
 {
@@ -34,7 +36,7 @@ namespace KeyboardTrackingApp
         private OverlayWindow _overlay;
         private readonly HttpClient _httpClient;
         private readonly string _apiUrl = "https://api-stg.qalam.ai/test/go";
-        private readonly string _bearerToken = "eyJraWQiOiJCSHhSWWpqenV6N1JpKzM4dVlCWkJcLzYwR3FIcVhqQjI2bHAxOVd6dTIwaz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiY3VzdG9tOnV0bV9zcmMiOiJOQSIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTEuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0xX2xNc0lHNmQ3ZyIsImNvZ25pdG86dXNlcm5hbWUiOiI2MmU3ODA0Yi03N2E0LTRjMTQtOGEwYi1iMWJmNjhkODhmZWEiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiI4NDZmMzAzNi1lNjg2LTRlNDMtYjUyYy00NmFmYTE4OTM4YTciLCJnaXZlbl9uYW1lIjoidGVzdCIsImF1ZCI6IjU5cW0xbDRnamlnczc2bzVqOTJucDQ2MGp0IiwiZXZlbnRfaWQiOiI4ZmVkM2YzNi1kNGU2LTQwMDQtYTNlOS1mOGRkYjExMjMwNmYiLCJ0b2tlbl91c2UiOiJpZCIsImF1dGhfdGltZSI6MTcyNzAyMTMxOSwiZXhwIjoxNzI3MDI0OTE5LCJpYXQiOjE3MjcwMjEzMTksImZhbWlseV9uYW1lIjoidGVzdCIsImVtYWlsIjoicGVkaWZhYzI4M0BjZXRub2IuY29tIn0.iWCPwblwm97AtjqRfJnSRsoj8EyfFSY6jlfLaLUAenjrS-a5peWp3w8-1FqVSJjE5ZGPraL1lyU8RcgkOimULpCfd9Ye7svDSyYjszDZ5WVukcJrUDXsJJXI6rxXjymV2LuVhgOkp3WVj-qhyn9VIcN_VyzyZieKsPlJdodGXCYJTpEXwBbEsgwY0azj0OilAME1-6J6ms7ub5hwJ16gqoce-xYG8Ur09GWPbubhmVkjssf1HzgM7gXNoesA2EyiyAtr6q6fyCw56J5dB7hJ37YGm0iDZ9qNkDiPWhsUCofbzkgm0GrFdpakOjZZriWLEsjWPWpeTsmJOINKn-2rcA";
+        private readonly string _bearerToken = "eyJraWQiOiJCSHhSWWpqenV6N1JpKzM4dVlCWkJcLzYwR3FIcVhqQjI2bHAxOVd6dTIwaz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJiY2RjNmEwMi0wYzEyLTQzNjItYjcxZS04MjY4MzkyYTI5YWUiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiY3VzdG9tOnV0bV9zcmMiOiJOQSIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTEuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0xX2xNc0lHNmQ3ZyIsImNvZ25pdG86dXNlcm5hbWUiOiJiY2RjNmEwMi0wYzEyLTQzNjItYjcxZS04MjY4MzkyYTI5YWUiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJhOTBmZGQwOC01MWE3LTRmY2MtOWI5NC02MzIxZTI5Y2FiZjYiLCJnaXZlbl9uYW1lIjoiV29yZC1QYWNrYWdlIiwiYXVkIjoiNTlxbTFsNGdqaWdzNzZvNWo5Mm5wNDYwanQiLCJldmVudF9pZCI6ImI5Y2EyZWQ3LTJiODYtNDgwYy1hZmQ5LTk1OWI2MmRlYThmYSIsInRva2VuX3VzZSI6ImlkIiwiYXV0aF90aW1lIjoxNzI3MDk2ODc0LCJleHAiOjE3MjcxMDA0NzQsImlhdCI6MTcyNzA5Njg3NCwiZmFtaWx5X25hbWUiOiJVc2VyIiwiZW1haWwiOiJ3aXJlamVmOTAwQGhld2Vlay5jb20ifQ.KJNvBMClL9H--orAXXJqRbJDqWSJSkYcHejT1h_2EhHN4okbtSx15_NFm9j9w_a51cvQKwGVRS-687iD_9pE8Q_fCMicICqLYmf0IdFKZsNSgIf_2fhy3iIRAIRqQ8gdFXcrKGyBc-VnWWRWIwZ4z1xJC1FxAnYypDzqBwbxuG5GmQrpX-r_fNTuJOWOTohQBqFGP4SarCq1X_8ftD6ZCxI3OWO9MjveuNY4rHvwPXVQ5DLu5pXH2pFU3_8B24CxUX7g1FO_Io3KD6-xwLFatoxro3wDcnuF3uolulT4FKiP-4miZYSSOrALDBxou6G5by-IIEII1akXofICraImPQ";
         private string _documentId;
 
         public MainWindow()
@@ -152,66 +154,267 @@ namespace KeyboardTrackingApp
             if (apiResponse?.spellCheckResponse?.results?.flagged_tokens == null)
             {
                 UpdateErrorCount(0);
-                _overlay.DrawUnderlines(new List<(System.Windows.Point, double, string, List<string>, int, int)>()); // Clear all underlines
+                _overlay.DrawUnderlines(new ErrorsUnderlines()); // Clear all underlines
                 Console.WriteLine("No flagged tokens found or API response was null.");
                 return;
             }
-
-            List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> underlines = new List<(System.Windows.Point, double, string, List<string>, int, int)>();
+            ErrorsUnderlines errors = new ErrorsUnderlines();
 
             IntPtr notepadHandle = NativeMethods.GetForegroundWindow();
             IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
 
             if (editHandle != IntPtr.Zero)
             {
-                IntPtr hdc = NativeMethods.GetDC(editHandle);
-                IntPtr hFont = NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETFONT , IntPtr.Zero , IntPtr.Zero);
-                IntPtr oldFont = NativeMethods.SelectObject(hdc , hFont);
-
-                foreach (var flaggedToken in apiResponse.spellCheckResponse.results.flagged_tokens)
-                {
-                    int startIndex = flaggedToken.start_index;
-                    int endIndex = flaggedToken.end_index;
-                    string incorrectWord = text.Substring(startIndex , endIndex - startIndex);
-
-                    // Measure the text width
-                    NativeMethods.SIZE size;
-                    NativeMethods.GetTextExtentPoint32(hdc , incorrectWord , incorrectWord.Length , out size);
-
-                    // Get the position of the start of the word
-                    IntPtr charPos = NativeMethods.SendMessage(editHandle , NativeMethods.EM_POSFROMCHAR , (IntPtr)startIndex , IntPtr.Zero);
-                    int x = ( charPos.ToInt32() & 0xFFFF );
-                    int y = ( ( charPos.ToInt32() >> 16 ) & 0xFFFF );
-
-                    // Adjust for RTL text
-                    x -= size.cx; // Move the starting point to the right edge of the word
-
-                    NativeMethods.POINT clientPoint = new NativeMethods.POINT { X = x , Y = y };
-                    NativeMethods.ClientToScreen(editHandle , ref clientPoint);
-
-                    List<string> suggestions = flaggedToken.suggestions.Select(s => s.text).ToList();
-                    underlines.Add((new System.Windows.Point(clientPoint.X , clientPoint.Y + 20), size.cx, incorrectWord, suggestions, startIndex, endIndex));
-                }
-
-                NativeMethods.SelectObject(hdc , oldFont);
-                NativeMethods.ReleaseDC(editHandle , hdc);
+                errors.SpellingErrors = GetSpellingErrors(editHandle,apiResponse);
+                errors.GrammarError = GetGrammarErrors(editHandle,apiResponse);
+                errors.PhrasingErrors = GetPhrasingErrors(editHandle, apiResponse);
+                errors.TafqitErrors = GetTafqitErrors(editHandle,apiResponse);
+                errors.TermErrors = GetTermErrors(editHandle,apiResponse);
             }
 
-            Application.Current.Dispatcher.Invoke(() =>
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
-                if (underlines.Count > 0)
-                {
-                    _overlay.DrawUnderlines(underlines);
-                    Console.WriteLine($"Drew {underlines.Count} underlines.");
-                }
-                else
-                {
-                    _overlay.DrawUnderlines(new List<(System.Windows.Point, double, string, List<string>, int, int)>()); // Clear all underlines
-                    Console.WriteLine("No errors found in text");
-                }
-                UpdateErrorCount(apiResponse.spellCheckResponse.results.flagged_tokens.Count);
+                var count = errors.SpellingErrors.Count + errors.GrammarError.Count + errors.PhrasingErrors.Count + errors.TafqitErrors.Count + errors.TermErrors.Count;
+                _overlay.DrawUnderlines(errors);
+                UpdateErrorCount(count);
             });
         }
+
+        #region GetErrors
+        private List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> GetSpellingErrors(
+    IntPtr editHandle ,
+    ApiResponse apiResponse)
+        {
+            string text = _allText.ToString();
+
+            List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> spellingErrors = new List<(System.Windows.Point, double, string, List<string>, int, int)>();
+
+            IntPtr hdc = NativeMethods.GetDC(editHandle);
+            IntPtr hFont = NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETFONT , IntPtr.Zero , IntPtr.Zero);
+            IntPtr oldFont = NativeMethods.SelectObject(hdc , hFont);
+
+            foreach (var flaggedToken in apiResponse.spellCheckResponse.results.flagged_tokens)
+            {
+                int startIndex = flaggedToken.start_index;
+                int endIndex = flaggedToken.end_index;
+                if (string.IsNullOrEmpty(text))
+                    return new List<(System.Windows.Point, double, string, List<string>, int, int)>();
+                string incorrectWord = text.Substring(startIndex , endIndex - startIndex);
+
+                // Measure the text width
+                NativeMethods.SIZE size;
+                NativeMethods.GetTextExtentPoint32(hdc , incorrectWord , incorrectWord.Length , out size);
+
+                // Get the position of the start of the word
+                IntPtr charPos = NativeMethods.SendMessage(editHandle , NativeMethods.EM_POSFROMCHAR , (IntPtr)startIndex , IntPtr.Zero);
+                int x = ( charPos.ToInt32() & 0xFFFF );
+                int y = ( ( charPos.ToInt32() >> 16 ) & 0xFFFF );
+
+                // Adjust for RTL text
+                x = x - size.cx; // Move the starting point to the right edge of the word
+
+                NativeMethods.POINT clientPoint = new NativeMethods.POINT { X = x , Y = y };
+                NativeMethods.ClientToScreen(editHandle , ref clientPoint);
+
+                List<string> suggestions = flaggedToken.suggestions.Select(s => s.text).ToList();
+                spellingErrors.Add((new System.Windows.Point(clientPoint.X , clientPoint.Y + 20), size.cx, incorrectWord, suggestions, startIndex, endIndex));
+            }
+
+            NativeMethods.SelectObject(hdc , oldFont);
+            NativeMethods.ReleaseDC(editHandle , hdc);
+            return spellingErrors;
+        }
+
+        private List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> GetGrammarErrors(
+            IntPtr editHandle ,
+            ApiResponse apiResponse)
+        {
+            string text = _allText.ToString();
+
+            List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> spellingErrors = new List<(System.Windows.Point, double, string, List<string>, int, int)>();
+
+            IntPtr hdc = NativeMethods.GetDC(editHandle);
+            IntPtr hFont = NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETFONT , IntPtr.Zero , IntPtr.Zero);
+            IntPtr oldFont = NativeMethods.SelectObject(hdc , hFont);
+            if (apiResponse.grammarResponse.results.flagged_tokens is null)
+                return new();
+
+            foreach (var flaggedToken in apiResponse.grammarResponse.results.flagged_tokens)
+            {
+                int startIndex = flaggedToken.start_index;
+                int endIndex = flaggedToken.end_index;
+                string incorrectWord = text.Substring(startIndex , endIndex - startIndex);
+
+                // Measure the text width
+                NativeMethods.SIZE size;
+                NativeMethods.GetTextExtentPoint32(hdc , incorrectWord , incorrectWord.Length , out size);
+
+                // Get the position of the start of the word
+                IntPtr charPos = NativeMethods.SendMessage(editHandle , NativeMethods.EM_POSFROMCHAR , (IntPtr)startIndex , IntPtr.Zero);
+                int x = ( charPos.ToInt32() & 0xFFFF );
+                int y = ( ( charPos.ToInt32() >> 16 ) & 0xFFFF );
+
+                // Adjust for RTL text
+                x -= size.cx; // Move the starting point to the right edge of the word
+
+                NativeMethods.POINT clientPoint = new NativeMethods.POINT { X = x , Y = y };
+                NativeMethods.ClientToScreen(editHandle , ref clientPoint);
+
+                List<string> suggestions = flaggedToken.suggestions.Select(s => s.text).ToList();
+                spellingErrors.Add((new System.Windows.Point(clientPoint.X , clientPoint.Y + 20), size.cx, incorrectWord, suggestions, startIndex, endIndex));
+            }
+
+            NativeMethods.SelectObject(hdc , oldFont);
+            NativeMethods.ReleaseDC(editHandle , hdc);
+            return spellingErrors;
+        }
+
+        private List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> GetPhrasingErrors(
+            IntPtr editHandle ,
+            ApiResponse apiResponse)
+        {
+            string text = _allText.ToString();
+
+            List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> spellingErrors = new List<(System.Windows.Point, double, string, List<string>, int, int)>();
+
+            IntPtr hdc = NativeMethods.GetDC(editHandle);
+            IntPtr hFont = NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETFONT , IntPtr.Zero , IntPtr.Zero);
+            IntPtr oldFont = NativeMethods.SelectObject(hdc , hFont);
+            if (apiResponse.phrasingResponse?.results?.flagged_tokens is null)
+                return new();
+            foreach (var flaggedToken in apiResponse.phrasingResponse.results.flagged_tokens)
+            {
+                int startIndex = flaggedToken.start_index;
+                int endIndex = flaggedToken.end_index;
+                string incorrectWord = text.Substring(startIndex , endIndex - startIndex);
+
+                // Measure the text width
+                NativeMethods.SIZE size;
+                NativeMethods.GetTextExtentPoint32(hdc , incorrectWord , incorrectWord.Length , out size);
+
+                // Get the position of the start of the word
+                IntPtr charPos = NativeMethods.SendMessage(editHandle , NativeMethods.EM_POSFROMCHAR , (IntPtr)startIndex , IntPtr.Zero);
+                int x = ( charPos.ToInt32() & 0xFFFF );
+                int y = ( ( charPos.ToInt32() >> 16 ) & 0xFFFF );
+
+                // Adjust for RTL text
+                x -= size.cx; // Move the starting point to the right edge of the word
+
+                NativeMethods.POINT clientPoint = new NativeMethods.POINT { X = x , Y = y };
+                NativeMethods.ClientToScreen(editHandle , ref clientPoint);
+
+                List<string> suggestions = flaggedToken.suggestions.Select(s => s.text).ToList();
+                spellingErrors.Add((new System.Windows.Point(clientPoint.X , clientPoint.Y + 20), size.cx, incorrectWord, suggestions, startIndex, endIndex));
+            }
+
+            NativeMethods.SelectObject(hdc , oldFont);
+            NativeMethods.ReleaseDC(editHandle , hdc);
+            return spellingErrors;
+        }
+
+        private List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> GetTafqitErrors(
+            IntPtr editHandle ,
+            ApiResponse apiResponse)
+        {
+            string text = _allText.ToString();
+
+            List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> spellingErrors = new List<(System.Windows.Point, double, string, List<string>, int, int)>();
+
+            IntPtr hdc = NativeMethods.GetDC(editHandle);
+            IntPtr hFont = NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETFONT , IntPtr.Zero , IntPtr.Zero);
+            IntPtr oldFont = NativeMethods.SelectObject(hdc , hFont);
+            if (apiResponse.tafqitResponse?.results?.flagged_tokens is null)
+                return new();
+            foreach (var flaggedToken in apiResponse.tafqitResponse?.results?.flagged_tokens)
+            {
+                int startIndex = flaggedToken.start_index;
+                int endIndex = flaggedToken.end_index;
+                string incorrectWord = text.Substring(startIndex , endIndex - startIndex);
+
+                // Measure the text width
+                NativeMethods.SIZE size;
+                NativeMethods.GetTextExtentPoint32(hdc , incorrectWord , incorrectWord.Length , out size);
+
+                // Get the position of the start of the word
+                IntPtr charPos = NativeMethods.SendMessage(editHandle , NativeMethods.EM_POSFROMCHAR , (IntPtr)startIndex , IntPtr.Zero);
+                int x = ( charPos.ToInt32() & 0xFFFF );
+                int y = ( ( charPos.ToInt32() >> 16 ) & 0xFFFF );
+
+                // Adjust for RTL text
+                x -= size.cx; // Move the starting point to the right edge of the word
+
+                NativeMethods.POINT clientPoint = new NativeMethods.POINT { X = x , Y = y };
+                NativeMethods.ClientToScreen(editHandle , ref clientPoint);
+
+                List<string> suggestions = flaggedToken.suggestions.Select(s => s.text).ToList();
+                spellingErrors.Add((new System.Windows.Point(clientPoint.X , clientPoint.Y + 20), size.cx, incorrectWord, suggestions, startIndex, endIndex));
+            }
+
+            NativeMethods.SelectObject(hdc , oldFont);
+            NativeMethods.ReleaseDC(editHandle , hdc);
+            return spellingErrors;
+        }
+
+        private List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> GetTermErrors(
+            IntPtr editHandle ,
+            ApiResponse apiResponse)
+        {
+            string text = _allText.ToString();
+
+            List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> spellingErrors = new List<(System.Windows.Point, double, string, List<string>, int, int)>();
+
+            IntPtr hdc = NativeMethods.GetDC(editHandle);
+            IntPtr hFont = NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETFONT , IntPtr.Zero , IntPtr.Zero);
+            IntPtr oldFont = NativeMethods.SelectObject(hdc , hFont);
+            var termSuggestions = new List<Term>();
+
+            if (apiResponse.termSuggestions is not null && apiResponse.termSuggestions.Any())
+            {
+                // Create a list to store the deserialized terms
+
+                // Loop through each object and cast/deserialize it to a Term object
+                foreach (var suggestion in apiResponse.termSuggestions)
+                {
+                    // Assuming the suggestion is a JSON string or JObject
+                    var term = JsonConvert.DeserializeObject<Term>(suggestion.ToString());
+                    termSuggestions.Add(term);
+                }
+            }
+
+            foreach (var term in termSuggestions)
+            {
+                int startIndex = term.from;
+                int endIndex = term.to - 1;
+                if (termSuggestions is null || !termSuggestions.Any())
+                    return new();
+                string incorrectWord = text.Substring(startIndex , endIndex - startIndex);
+
+                // Measure the text width
+                NativeMethods.SIZE size;
+                NativeMethods.GetTextExtentPoint32(hdc , incorrectWord , incorrectWord.Length , out size);
+
+                // Get the position of the start of the word
+                IntPtr charPos = NativeMethods.SendMessage(editHandle , NativeMethods.EM_POSFROMCHAR , (IntPtr)startIndex , IntPtr.Zero);
+                int x = ( charPos.ToInt32() & 0xFFFF );
+                int y = ( ( charPos.ToInt32() >> 16 ) & 0xFFFF );
+
+                // Adjust for RTL text
+                x -= size.cx; // Move the starting point to the right edge of the word
+
+                NativeMethods.POINT clientPoint = new NativeMethods.POINT { X = x , Y = y };
+                NativeMethods.ClientToScreen(editHandle , ref clientPoint);
+
+                List<string> suggestions = new List<string>();
+                suggestions.Add(term.replacement);
+                spellingErrors.Add((new System.Windows.Point(clientPoint.X , clientPoint.Y + 20), size.cx, incorrectWord, suggestions, startIndex, endIndex));
+            }
+
+            NativeMethods.SelectObject(hdc , oldFont);
+            NativeMethods.ReleaseDC(editHandle , hdc);
+            return spellingErrors;
+        } 
+        #endregion
+
         private async Task<ApiResponse> GetSpellCheckResultsAsync(string text)
         {
             if (string.IsNullOrEmpty(text))

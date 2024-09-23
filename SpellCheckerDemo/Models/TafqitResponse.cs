@@ -2,5 +2,5 @@
 
 public class TafqitResponse
 {
-    public object results { get; set; }
+    public Results results { get; set; }
 }

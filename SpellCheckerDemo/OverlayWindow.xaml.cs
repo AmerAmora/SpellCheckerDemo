@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SpellCheckerDemo.Models;
+using System;
 using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
@@ -54,20 +55,32 @@ namespace SpellCheckerDemo
             _suggestionPopup.Child = _suggestionListBox;
         }
 
-        public void DrawUnderlines(List<(Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> underlines)
+        public void DrawUnderlines(ErrorsUnderlines errors)
         {
-            _underlines = underlines;
             canvas.Children.Clear();
+            _underlines = new List<(System.Windows.Point, double, string, List<string>, int, int)>();
 
-            foreach (var (screenPosition, width, incorrectWord, suggestions, startIndex, endIndex) in underlines)
+            DrawErrorType(errors.SpellingErrors , Brushes.Red);
+            DrawErrorType(errors.GrammarError , Brushes.LightBlue);
+            DrawErrorType(errors.PhrasingErrors , Brushes.Yellow);
+            DrawErrorType(errors.TafqitErrors , Brushes.LightGreen);
+            DrawErrorType(errors.TermErrors , Brushes.Purple);
+        }
+
+        private void DrawErrorType(List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> errorList , Brush color)
+        {
+            foreach (var error in errorList)
             {
+                var (screenPosition, width, incorrectWord, suggestions, startIndex, endIndex) = error;
+                _underlines.Add(error);
+
                 var line = new Line
                 {
                     X1 = screenPosition.X - Left ,
                     Y1 = screenPosition.Y - Top + 2 ,
                     X2 = screenPosition.X - Left + width ,
                     Y2 = screenPosition.Y - Top + 2 ,
-                    Stroke = Brushes.Red ,
+                    Stroke = color ,
                     StrokeThickness = 2 ,
                     Tag = (incorrectWord, suggestions, startIndex, endIndex)
                 };
@@ -76,7 +89,6 @@ namespace SpellCheckerDemo
                 canvas.Children.Add(line);
             }
         }
-
         private void Line_MouseLeftButtonDown(object sender , MouseButtonEventArgs e)
         {
             if (sender is Line line && line.Tag is (string incorrectWord, List<string> suggestions, int startIndex, int endIndex))

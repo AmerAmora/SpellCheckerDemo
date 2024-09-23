@@ -3,5 +3,5 @@
 public class PhrasingResponse
 {
     public string version { get; set; }
-    public object results { get; set; }
+    public Results results { get; set; }
 }
