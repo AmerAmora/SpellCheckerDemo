@@ -13,27 +13,21 @@
 
         <!-- Error Count Badge -->
         <Grid x:Name="ErrorCountGrid" Visibility="Collapsed" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-5,-5,0">
-            <!-- Outer white circle and arrow -->
             <Grid Width="50" Height="50">
-                <!-- Outer white circle -->
-                <Ellipse Fill="#E8E8E8" Stroke="#CCCCCC" StrokeThickness="2" Width="50" Height="50" />
-
-                <!-- Arrow -->
-                <Path Fill="#E8E8E8" Stroke="#CCCCCC" StrokeThickness="2" 
-                      Data="M 40,0 L 50,10 L 40,20 L 35,15 Z"
-                      HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,0,-5,0"/>
-
+                <!-- Outer gray circle -->
                 <!-- Inner red circle -->
-                <Ellipse Fill="#FF0000" Width="35" Height="35" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                <Path Width="40" Height="46" Fill="#FF4D4D" HorizontalAlignment="Center" VerticalAlignment="Center"
+                      Stretch="Uniform" Data="M20,0 L40,20 A20,20 0 1 1 0,20 Z"/>
 
                 <!-- Error Count Text -->
                 <TextBlock x:Name="ErrorCountText"
                            Text="4"
-                           FontSize="24"
-                           FontWeight="Bold"
+                           FontSize="20"
+                           FontFamily="Arial"
                            Foreground="White"
                            HorizontalAlignment="Center"
-                           VerticalAlignment="Center"/>
+                           VerticalAlignment="Center" 
+                           Margin="0,3,0,0"/>
             </Grid>
         </Grid>
     </Grid>
