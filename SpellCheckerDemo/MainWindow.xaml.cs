@@ -1,22 +1,14 @@
 ﻿using System.Diagnostics;
 using System.Text;
 using System.Windows;
-using System.Windows.Documents;
 using Keys = System.Windows.Forms.Keys;
 using System.Windows.Threading;
 using SpellCheckerDemo;
-using Brushes = System.Windows.Media.Brushes;
-using Point = System.Drawing.Point;
-using System.Drawing;
-using System.Windows.Interop;
-using System.Windows.Media;
-using static NativeMethods;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using Newtonsoft.Json;
 using SpellCheckerDemo.Models;
-using static System.Net.Mime.MediaTypeNames;
-using System.Threading;
+using System.Windows.Forms;
 
 namespace KeyboardTrackingApp
 {
@@ -36,8 +28,9 @@ namespace KeyboardTrackingApp
         private OverlayWindow _overlay;
         private readonly HttpClient _httpClient;
         private readonly string _apiUrl = "https://api-stg.qalam.ai/test/go";
-        private readonly string _bearerToken = "eyJraWQiOiJCSHhSWWpqenV6N1JpKzM4dVlCWkJcLzYwR3FIcVhqQjI2bHAxOVd6dTIwaz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJiY2RjNmEwMi0wYzEyLTQzNjItYjcxZS04MjY4MzkyYTI5YWUiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiY3VzdG9tOnV0bV9zcmMiOiJOQSIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTEuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0xX2xNc0lHNmQ3ZyIsImNvZ25pdG86dXNlcm5hbWUiOiJiY2RjNmEwMi0wYzEyLTQzNjItYjcxZS04MjY4MzkyYTI5YWUiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJhOTBmZGQwOC01MWE3LTRmY2MtOWI5NC02MzIxZTI5Y2FiZjYiLCJnaXZlbl9uYW1lIjoiV29yZC1QYWNrYWdlIiwiYXVkIjoiNTlxbTFsNGdqaWdzNzZvNWo5Mm5wNDYwanQiLCJldmVudF9pZCI6ImI5Y2EyZWQ3LTJiODYtNDgwYy1hZmQ5LTk1OWI2MmRlYThmYSIsInRva2VuX3VzZSI6ImlkIiwiYXV0aF90aW1lIjoxNzI3MDk2ODc0LCJleHAiOjE3MjcxMDA0NzQsImlhdCI6MTcyNzA5Njg3NCwiZmFtaWx5X25hbWUiOiJVc2VyIiwiZW1haWwiOiJ3aXJlamVmOTAwQGhld2Vlay5jb20ifQ.KJNvBMClL9H--orAXXJqRbJDqWSJSkYcHejT1h_2EhHN4okbtSx15_NFm9j9w_a51cvQKwGVRS-687iD_9pE8Q_fCMicICqLYmf0IdFKZsNSgIf_2fhy3iIRAIRqQ8gdFXcrKGyBc-VnWWRWIwZ4z1xJC1FxAnYypDzqBwbxuG5GmQrpX-r_fNTuJOWOTohQBqFGP4SarCq1X_8ftD6ZCxI3OWO9MjveuNY4rHvwPXVQ5DLu5pXH2pFU3_8B24CxUX7g1FO_Io3KD6-xwLFatoxro3wDcnuF3uolulT4FKiP-4miZYSSOrALDBxou6G5by-IIEII1akXofICraImPQ";
+        private readonly string _bearerToken = "eyJraWQiOiJCSHhSWWpqenV6N1JpKzM4dVlCWkJcLzYwR3FIcVhqQjI2bHAxOVd6dTIwaz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJiY2RjNmEwMi0wYzEyLTQzNjItYjcxZS04MjY4MzkyYTI5YWUiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiY3VzdG9tOnV0bV9zcmMiOiJOQSIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTEuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0xX2xNc0lHNmQ3ZyIsImNvZ25pdG86dXNlcm5hbWUiOiJiY2RjNmEwMi0wYzEyLTQzNjItYjcxZS04MjY4MzkyYTI5YWUiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJhOTBmZGQwOC01MWE3LTRmY2MtOWI5NC02MzIxZTI5Y2FiZjYiLCJnaXZlbl9uYW1lIjoiV29yZC1QYWNrYWdlIiwiYXVkIjoiNTlxbTFsNGdqaWdzNzZvNWo5Mm5wNDYwanQiLCJldmVudF9pZCI6IjE0ZTgwYmVlLWM0YjEtNGY2My04N2RmLTgzNGQ4MWIyYWE2YyIsInRva2VuX3VzZSI6ImlkIiwiYXV0aF90aW1lIjoxNzI3MTYwMDc5LCJleHAiOjE3MjcxNjM2NzksImlhdCI6MTcyNzE2MDA3OSwiZmFtaWx5X25hbWUiOiJVc2VyIiwiZW1haWwiOiJ3aXJlamVmOTAwQGhld2Vlay5jb20ifQ.h3K8Zp3BegpevVy_cTXK8nnqr8WKx7KhNnepaeSh0S4jidTC2tbu-Q9JA5_KoBrG24EnMIIO6uEA_E1sN0seomImkCZ9kGcL40tFciIIf2xDzl1FPqFvLKR1sVwDcwS0gXEbHGJy5Dsx8M880GSpy6RHjAxbpfbifoC8DtMAEoCevrxQFDuKhD4h0EaDzxb7EXo2bmXLa_wpGWkLeVXzQEex8CRhDHwo0uiwIfkvf6afHlBsKWWxDN4jjzb8YcxWCpAaKW8DLv9d6mvwjxq3jt9yuVE7UawA1m40xn6l9a9YOJqOa4sASXP6VFSjhooHkXh698J9B3Bt6rxXCxi8kQ";
         private string _documentId;
+        private Screen _currentScreen;
 
         public MainWindow()
         {
@@ -94,21 +87,21 @@ namespace KeyboardTrackingApp
         {
             if (_notepadProcessId == null)
             {
-                MessageBox.Show("Notepad process ID is not set.");
+                System.Windows.MessageBox.Show("Notepad process ID is not set.");
                 return;
             }
 
             IntPtr notepadHandle = FindNotepadWindow();
             if (notepadHandle == IntPtr.Zero)
             {
-                MessageBox.Show("Failed to find Notepad window.");
+                System.Windows.MessageBox.Show("Failed to find Notepad window.");
                 return;
             }
 
             IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
             if (editHandle == IntPtr.Zero)
             {
-                MessageBox.Show("Failed to find Edit control in Notepad.");
+                System.Windows.MessageBox.Show("Failed to find Edit control in Notepad.");
                 return;
             }
 
@@ -197,9 +190,15 @@ namespace KeyboardTrackingApp
             {
                 int startIndex = flaggedToken.start_index;
                 int endIndex = flaggedToken.end_index;
-                if (string.IsNullOrEmpty(text))
-                    return new List<(System.Windows.Point, double, string, List<string>, int, int)>();
-                string incorrectWord = text.Substring(startIndex , endIndex - startIndex);
+                string incorrectWord = "";
+                if (startIndex >= 0 && startIndex < text.Length && endIndex <= text.Length && endIndex > startIndex)
+                {
+                    incorrectWord = text.Substring(startIndex , endIndex - startIndex);
+                }
+                else
+                {
+                    return spellingErrors; 
+                }
 
                 // Measure the text width
                 NativeMethods.SIZE size;
@@ -217,7 +216,8 @@ namespace KeyboardTrackingApp
                 NativeMethods.ClientToScreen(editHandle , ref clientPoint);
 
                 List<string> suggestions = flaggedToken.suggestions.Select(s => s.text).ToList();
-                spellingErrors.Add((new System.Windows.Point(clientPoint.X , clientPoint.Y + 20), size.cx, incorrectWord, suggestions, startIndex, endIndex));
+                Point wpfPoint = ScreenToWpf(new Point(clientPoint.X , clientPoint.Y));
+                spellingErrors.Add((new System.Windows.Point(wpfPoint.X , wpfPoint.Y + 20), size.cx, incorrectWord, suggestions, startIndex, endIndex));
             }
 
             NativeMethods.SelectObject(hdc , oldFont);
@@ -243,8 +243,15 @@ namespace KeyboardTrackingApp
             {
                 int startIndex = flaggedToken.start_index;
                 int endIndex = flaggedToken.end_index;
-                string incorrectWord = text.Substring(startIndex , endIndex - startIndex);
-
+                string incorrectWord = "";
+                if (startIndex >= 0 && startIndex < text.Length && endIndex <= text.Length && endIndex > startIndex)
+                {
+                    incorrectWord = text.Substring(startIndex , endIndex - startIndex);
+                }
+                else
+                {
+                    return spellingErrors;
+                }
                 // Measure the text width
                 NativeMethods.SIZE size;
                 NativeMethods.GetTextExtentPoint32(hdc , incorrectWord , incorrectWord.Length , out size);
@@ -261,7 +268,8 @@ namespace KeyboardTrackingApp
                 NativeMethods.ClientToScreen(editHandle , ref clientPoint);
 
                 List<string> suggestions = flaggedToken.suggestions.Select(s => s.text).ToList();
-                spellingErrors.Add((new System.Windows.Point(clientPoint.X , clientPoint.Y + 20), size.cx, incorrectWord, suggestions, startIndex, endIndex));
+                Point wpfPoint = ScreenToWpf(new Point(clientPoint.X , clientPoint.Y));
+                spellingErrors.Add((new System.Windows.Point(wpfPoint.X , wpfPoint.Y + 20), size.cx, incorrectWord, suggestions, startIndex, endIndex));
             }
 
             NativeMethods.SelectObject(hdc , oldFont);
@@ -286,8 +294,15 @@ namespace KeyboardTrackingApp
             {
                 int startIndex = flaggedToken.start_index;
                 int endIndex = flaggedToken.end_index;
-                string incorrectWord = text.Substring(startIndex , endIndex - startIndex);
-
+                string incorrectWord = "";
+                if (startIndex >= 0 && startIndex < text.Length && endIndex <= text.Length && endIndex > startIndex)
+                {
+                    incorrectWord = text.Substring(startIndex , endIndex - startIndex);
+                }
+                else
+                {
+                    return spellingErrors;
+                }
                 // Measure the text width
                 NativeMethods.SIZE size;
                 NativeMethods.GetTextExtentPoint32(hdc , incorrectWord , incorrectWord.Length , out size);
@@ -304,7 +319,8 @@ namespace KeyboardTrackingApp
                 NativeMethods.ClientToScreen(editHandle , ref clientPoint);
 
                 List<string> suggestions = flaggedToken.suggestions.Select(s => s.text).ToList();
-                spellingErrors.Add((new System.Windows.Point(clientPoint.X , clientPoint.Y + 20), size.cx, incorrectWord, suggestions, startIndex, endIndex));
+                Point wpfPoint = ScreenToWpf(new Point(clientPoint.X , clientPoint.Y));
+                spellingErrors.Add((new System.Windows.Point(wpfPoint.X , wpfPoint.Y + 20), size.cx, incorrectWord, suggestions, startIndex, endIndex));
             }
 
             NativeMethods.SelectObject(hdc , oldFont);
@@ -329,8 +345,15 @@ namespace KeyboardTrackingApp
             {
                 int startIndex = flaggedToken.start_index;
                 int endIndex = flaggedToken.end_index;
-                string incorrectWord = text.Substring(startIndex , endIndex - startIndex);
-
+                string incorrectWord = "";
+                if (startIndex >= 0 && startIndex < text.Length && endIndex <= text.Length && endIndex > startIndex)
+                {
+                    incorrectWord = text.Substring(startIndex , endIndex - startIndex);
+                }
+                else
+                {
+                    return spellingErrors;
+                }
                 // Measure the text width
                 NativeMethods.SIZE size;
                 NativeMethods.GetTextExtentPoint32(hdc , incorrectWord , incorrectWord.Length , out size);
@@ -347,7 +370,8 @@ namespace KeyboardTrackingApp
                 NativeMethods.ClientToScreen(editHandle , ref clientPoint);
 
                 List<string> suggestions = flaggedToken.suggestions.Select(s => s.text).ToList();
-                spellingErrors.Add((new System.Windows.Point(clientPoint.X , clientPoint.Y + 20), size.cx, incorrectWord, suggestions, startIndex, endIndex));
+                Point wpfPoint = ScreenToWpf(new Point(clientPoint.X , clientPoint.Y));
+                spellingErrors.Add((new System.Windows.Point(wpfPoint.X , wpfPoint.Y + 20), size.cx, incorrectWord, suggestions, startIndex, endIndex));
             }
 
             NativeMethods.SelectObject(hdc , oldFont);
@@ -387,8 +411,15 @@ namespace KeyboardTrackingApp
                 int endIndex = term.to - 1;
                 if (termSuggestions is null || !termSuggestions.Any())
                     return new();
-                string incorrectWord = text.Substring(startIndex , endIndex - startIndex);
-
+                string incorrectWord = "";
+                if (startIndex >= 0 && startIndex < text.Length && endIndex <= text.Length && endIndex > startIndex)
+                {
+                    incorrectWord = text.Substring(startIndex , endIndex - startIndex);
+                }
+                else
+                {
+                    return spellingErrors;
+                }
                 // Measure the text width
                 NativeMethods.SIZE size;
                 NativeMethods.GetTextExtentPoint32(hdc , incorrectWord , incorrectWord.Length , out size);
@@ -406,7 +437,8 @@ namespace KeyboardTrackingApp
 
                 List<string> suggestions = new List<string>();
                 suggestions.Add(term.replacement);
-                spellingErrors.Add((new System.Windows.Point(clientPoint.X , clientPoint.Y + 20), size.cx, incorrectWord, suggestions, startIndex, endIndex));
+                Point wpfPoint = ScreenToWpf(new Point(clientPoint.X , clientPoint.Y));
+                spellingErrors.Add((new System.Windows.Point(wpfPoint.X , wpfPoint.Y + 20), size.cx, incorrectWord, suggestions, startIndex, endIndex));
             }
 
             NativeMethods.SelectObject(hdc , oldFont);
@@ -454,14 +486,13 @@ namespace KeyboardTrackingApp
                         _notepadProcessId = GetProcessId(foregroundWindow);
                         ReadWindowContent(foregroundWindow);
                     }
-                    //else
-                    //{
-                    //    _notepadProcessId = null;
-                    //}
                 }
 
                 UpdateOverlayPosition();
                 CheckForIncorrectWords();
+
+                // Update the current screen
+                _currentScreen = Screen.FromHandle(foregroundWindow);
             }
         }
 
@@ -470,12 +501,25 @@ namespace KeyboardTrackingApp
             NativeMethods.RECT rect;
             if (NativeMethods.GetWindowRect(_lastActiveWindowHandle , out rect))
             {
-                _overlay.Left = rect.Left;
-                _overlay.Top = rect.Top;
-                _overlay.Width = rect.Right - rect.Left;
-                _overlay.Height = rect.Bottom - rect.Top;
+                // Convert screen coordinates to DPI-aware WPF coordinates
+                System.Windows.Point topLeft = ScreenToWpf(new System.Windows.Point(rect.Left , rect.Top));
+                System.Windows.Point bottomRight = ScreenToWpf(new System.Windows.Point(rect.Right , rect.Bottom));
+
+                _overlay.Left = topLeft.X;
+                _overlay.Top = topLeft.Y;
+                _overlay.Width = bottomRight.X - topLeft.X;
+                _overlay.Height = bottomRight.Y - topLeft.Y;
             }
         }
+
+        private System.Windows.Point ScreenToWpf(System.Windows.Point screenPoint)
+        {
+            PresentationSource source = PresentationSource.FromVisual(this);
+            if (source == null) return screenPoint;
+
+            return source.CompositionTarget.TransformFromDevice.Transform(screenPoint);
+        }
+
 
         private void ProcessCheckTimer_Tick(object sender , EventArgs e)
         {
@@ -499,7 +543,7 @@ namespace KeyboardTrackingApp
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error retrieving process ID: {ex.Message}");
+                System.Windows.MessageBox.Show($"Error retrieving process ID: {ex.Message}");
                 return null;
             }
         }
@@ -543,7 +587,7 @@ namespace KeyboardTrackingApp
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error reading Notepad content: {ex.Message}");
+                System.Windows.MessageBox.Show($"Error reading Notepad content: {ex.Message}");
             }
         }
 
