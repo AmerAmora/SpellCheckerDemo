@@ -15,7 +15,7 @@ namespace SpellCheckerDemo
     {
         private List<(Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> _underlines;
         private Popup _suggestionPopup;
-        private ListBox _suggestionListBox;
+        private StackPanel _suggestionPanel;
 
         public event EventHandler<(string suggestion, int startIndex, int endIndex)> SuggestionAccepted;
 
@@ -43,17 +43,91 @@ namespace SpellCheckerDemo
                 Placement = PlacementMode.MousePoint
             };
 
-            _suggestionListBox = new ListBox
+            var border = new Border
             {
-                Margin = new Thickness(5) ,
+                Background = new SolidColorBrush(Color.FromArgb(240 , 255 , 255 , 255)) ,
+                BorderBrush = new SolidColorBrush(Color.FromRgb(200 , 200 , 200)) ,
                 BorderThickness = new Thickness(1) ,
-                BorderBrush = Brushes.Gray ,
-                Background = Brushes.White
+                CornerRadius = new CornerRadius(4) ,
+                Padding = new Thickness(5) ,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect
+                {
+                    Color = Colors.Gray ,
+                    Direction = 315 ,
+                    ShadowDepth = 5 ,
+                    BlurRadius = 10 ,
+                    Opacity = 0.3
+                }
             };
-            _suggestionListBox.SelectionChanged += SuggestionListBox_SelectionChanged;
 
-            _suggestionPopup.Child = _suggestionListBox;
+            _suggestionPanel = new StackPanel
+            {
+                Orientation = Orientation.Vertical
+            };
+
+            var scrollViewer = new ScrollViewer
+            {
+                VerticalScrollBarVisibility = ScrollBarVisibility.Auto ,
+                HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled ,
+                MaxHeight = 200 ,
+                Content = _suggestionPanel
+            };
+
+            border.Child = scrollViewer;
+            _suggestionPopup.Child = border;
         }
+
+        private UIElement CreateSuggestionRectangle(string text)
+        {
+            var border = new Border
+            {
+                Background = Brushes.White ,
+                BorderBrush = new SolidColorBrush(Color.FromRgb(200 , 200 , 200)) ,
+                BorderThickness = new Thickness(1) ,
+                CornerRadius = new CornerRadius(4) ,
+                Padding = new Thickness(10 , 5 , 10 , 5) ,
+                Margin = new Thickness(0 , 0 , 0 , 5)
+            };
+
+            var textBlock = new TextBlock
+            {
+                Text = text ,
+                Foreground = Brushes.Green ,
+                FontWeight = FontWeights.SemiBold
+            };
+
+            border.Child = textBlock;
+            border.MouseLeftButtonDown += Suggestion_MouseLeftButtonDown;
+            return border;
+        }
+
+        private void Suggestion_MouseLeftButtonDown(object sender , MouseButtonEventArgs e)
+        {
+            if (sender is Border border &&
+                border.Child is TextBlock textBlock &&
+                _suggestionPopup.Tag is (string incorrectWord, List<string> suggestions, int startIndex, int endIndex))
+            {
+                string selectedSuggestion = textBlock.Text;
+                SuggestionAccepted?.Invoke(this , (selectedSuggestion, startIndex, endIndex));
+                _suggestionPopup.IsOpen = false;
+            }
+        }
+
+        private void Line_MouseLeftButtonDown(object sender , MouseButtonEventArgs e)
+        {
+            if (sender is Line line && line.Tag is (string incorrectWord, List<string> suggestions, int startIndex, int endIndex))
+            {
+                _suggestionPanel.Children.Clear();
+                foreach (var suggestion in suggestions)
+                {
+                    _suggestionPanel.Children.Add(CreateSuggestionRectangle(suggestion));
+                }
+                _suggestionPopup.Tag = (incorrectWord, suggestions, startIndex, endIndex);
+                _suggestionPopup.IsOpen = true;
+            }
+        }
+
+
 
         public void DrawUnderlines(ErrorsUnderlines errors)
         {
@@ -88,40 +162,6 @@ namespace SpellCheckerDemo
                 line.MouseLeftButtonDown += Line_MouseLeftButtonDown;
                 canvas.Children.Add(line);
             }
-        }
-        private void Line_MouseLeftButtonDown(object sender , MouseButtonEventArgs e)
-        {
-            if (sender is Line line && line.Tag is (string incorrectWord, List<string> suggestions, int startIndex, int endIndex))
-            {
-                _suggestionListBox.ItemsSource = suggestions;
-                _suggestionPopup.Tag = (incorrectWord, suggestions, startIndex, endIndex);
-                _suggestionPopup.IsOpen = true;
-            }
-        }
-
-        private void SuggestionListBox_SelectionChanged(object sender , SelectionChangedEventArgs e)
-        {
-            if (_suggestionListBox.SelectedItem is string selectedSuggestion &&
-                _suggestionPopup.Tag is (string incorrectWord, List<string> suggestions, int startIndex, int endIndex))
-            {
-                SuggestionAccepted?.Invoke(this , (selectedSuggestion, startIndex, endIndex));
-                _suggestionPopup.IsOpen = false;
-            }
-        }
-
-        private void AcceptButton_Click(object sender , RoutedEventArgs e)
-        {
-            if (_suggestionPopup.Tag is (string incorrectWord, List<string> suggestions, int startIndex, int endIndex) &&
-                _suggestionListBox.SelectedItem is string selectedSuggestion)
-            {
-                SuggestionAccepted?.Invoke(this , (selectedSuggestion, startIndex, endIndex));
-            }
-            _suggestionPopup.IsOpen = false;
-        }
-
-        private void CancelButton_Click(object sender , RoutedEventArgs e)
-        {
-            _suggestionPopup.IsOpen = false;
         }
     }
 
