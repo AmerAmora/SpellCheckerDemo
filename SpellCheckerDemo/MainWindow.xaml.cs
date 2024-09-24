@@ -28,7 +28,7 @@ namespace KeyboardTrackingApp
         private OverlayWindow _overlay;
         private readonly HttpClient _httpClient;
         private readonly string _apiUrl = "https://api-stg.qalam.ai/test/go";
-        private readonly string _bearerToken = "eyJraWQiOiJCSHhSWWpqenV6N1JpKzM4dVlCWkJcLzYwR3FIcVhqQjI2bHAxOVd6dTIwaz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJiY2RjNmEwMi0wYzEyLTQzNjItYjcxZS04MjY4MzkyYTI5YWUiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiY3VzdG9tOnV0bV9zcmMiOiJOQSIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTEuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0xX2xNc0lHNmQ3ZyIsImNvZ25pdG86dXNlcm5hbWUiOiJiY2RjNmEwMi0wYzEyLTQzNjItYjcxZS04MjY4MzkyYTI5YWUiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJhOTBmZGQwOC01MWE3LTRmY2MtOWI5NC02MzIxZTI5Y2FiZjYiLCJnaXZlbl9uYW1lIjoiV29yZC1QYWNrYWdlIiwiYXVkIjoiNTlxbTFsNGdqaWdzNzZvNWo5Mm5wNDYwanQiLCJldmVudF9pZCI6ImZhODRmODlkLWMwNTctNGI1NC05NmM5LWYxMzE3NWE2NWY2NSIsInRva2VuX3VzZSI6ImlkIiwiYXV0aF90aW1lIjoxNzI3MTcyMzg3LCJleHAiOjE3MjcxNzU5ODcsImlhdCI6MTcyNzE3MjM4NywiZmFtaWx5X25hbWUiOiJVc2VyIiwiZW1haWwiOiJ3aXJlamVmOTAwQGhld2Vlay5jb20ifQ.np0Gd17Oax0CesBDHuaUhoc5AO2G1Px783atwP5VWlJiMslHfnmcQ3F4ka36ebfX9KzKPf3j5q0RLs2JvSXYoFz_4xdTxZDoy4cVleKb_TDQGLMKjtfMP11S-5qQTRNWOqvmih2LgOKyBgChtKbHx8d5IVJCMrphJQcGA_3K7tFEGAUuSlOgH8MrLvBc1kAx8fjYss9-VF5I5Pkz3LifQJUFbczFezAn5jGS8NtY5vVdk7U4Rssd4AcArJ0ZNjXhHYKr-IicJJYo--XWUO61BekhXCCRPENiNNDx1oAaQPnCMh0wFeaU0nf1IJDs5wwKNjtlnKY6xSaeWbKQjvKUWQ";
+        private readonly string _bearerToken = "eyJraWQiOiJCSHhSWWpqenV6N1JpKzM4dVlCWkJcLzYwR3FIcVhqQjI2bHAxOVd6dTIwaz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJiY2RjNmEwMi0wYzEyLTQzNjItYjcxZS04MjY4MzkyYTI5YWUiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiY3VzdG9tOnV0bV9zcmMiOiJOQSIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTEuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0xX2xNc0lHNmQ3ZyIsImNvZ25pdG86dXNlcm5hbWUiOiJiY2RjNmEwMi0wYzEyLTQzNjItYjcxZS04MjY4MzkyYTI5YWUiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJhOTBmZGQwOC01MWE3LTRmY2MtOWI5NC02MzIxZTI5Y2FiZjYiLCJnaXZlbl9uYW1lIjoiV29yZC1QYWNrYWdlIiwiYXVkIjoiNTlxbTFsNGdqaWdzNzZvNWo5Mm5wNDYwanQiLCJldmVudF9pZCI6IjQ1ODBlYmI4LTU5NjEtNDI1Yy1iNTNhLTVmNGEyMGI0ODY0MCIsInRva2VuX3VzZSI6ImlkIiwiYXV0aF90aW1lIjoxNzI3MTgxMTA0LCJleHAiOjE3MjcxODQ3MDQsImlhdCI6MTcyNzE4MTEwNCwiZmFtaWx5X25hbWUiOiJVc2VyIiwiZW1haWwiOiJ3aXJlamVmOTAwQGhld2Vlay5jb20ifQ.oWVsyVeBdpY_aLNOuzz5SgOKnlHYJ4IIrpMA7bSxu9KrTvyyq80db_B7I-_rMwvDrO2vRjqwhYfvdSeGFCdNY-pl-QDbQrdNaolNvcfOliyz_xXrGtN0vm6l24IqMY7J3bdQvc_HXQ-sc066tsYV_Nc75rHpmMQuMNVq5G1Q6ZGHTm9hDLNGJsg9Hu31DqMfI5jAOX9iaK8ZzVZet07T3IRC-vYqR5xuG_QxTwZf_NgKF2y8csiA0io-kw9pKFwmA10Ww-70uf3BvZSbKbdhf2FjExA_xNx4JKxt_IhXI7F7qHZfRwQV_NqOA9Dx0jE1O6IO6XkeY-4Ro4b2-0SIEQ";
         private string _documentId;
         private Screen _currentScreen;
 
@@ -64,7 +64,7 @@ namespace KeyboardTrackingApp
             _contentSyncTimer.Start();
 
             _floatingPoint = new FloatingPointWindow();
-            _floatingPoint.Show();
+            _floatingPoint.Hide();
 
             _overlay = new OverlayWindow();
             _overlay.Show();
@@ -480,12 +480,18 @@ namespace KeyboardTrackingApp
 
                 if (newWindowTitle != _lastActiveWindowTitle)
                 {
+                    _floatingPoint.Show();
                     _lastActiveWindowTitle = newWindowTitle;
                     if (IsNotepad(newWindowTitle))
                     {
                         _notepadProcessId = GetProcessId(foregroundWindow);
                         ReadWindowContent(foregroundWindow);
                     }
+                }
+
+                else
+                {
+                    _floatingPoint.Hide();
                 }
 
                 UpdateOverlayPosition();
