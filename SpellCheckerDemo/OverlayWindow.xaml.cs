@@ -127,7 +127,13 @@ namespace SpellCheckerDemo
             }
         }
 
-
+        public void CloseSuggestionPopup()
+        {
+            if (_suggestionPopup != null)
+            {
+                _suggestionPopup.IsOpen = false;
+            }
+        }
 
         public void DrawUnderlines(ErrorsUnderlines errors)
         {
@@ -135,7 +141,7 @@ namespace SpellCheckerDemo
             _underlines = new List<(System.Windows.Point, double, string, List<string>, int, int)>();
 
             DrawErrorType(errors.SpellingErrors , Brushes.Red);
-            DrawErrorType(errors.GrammarError , Brushes.LightBlue);
+            DrawErrorType(errors.GrammarErrors , Brushes.LightBlue);
             DrawErrorType(errors.PhrasingErrors , Brushes.Yellow);
             DrawErrorType(errors.TafqitErrors , Brushes.LightGreen);
             DrawErrorType(errors.TermErrors , Brushes.Purple);
@@ -155,7 +161,7 @@ namespace SpellCheckerDemo
                     X2 = screenPosition.X - Left + width ,
                     Y2 = screenPosition.Y - Top + 2 ,
                     Stroke = color ,
-                    StrokeThickness = 2 ,
+                    StrokeThickness = 3 ,
                     Tag = (incorrectWord, suggestions, startIndex, endIndex)
                 };
 
