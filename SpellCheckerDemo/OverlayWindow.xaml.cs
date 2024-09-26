@@ -1,6 +1,8 @@
 ﻿using SpellCheckerDemo.Models;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -16,6 +18,9 @@ namespace SpellCheckerDemo
         private List<(Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> _underlines;
         private Popup _suggestionPopup;
         private StackPanel _suggestionPanel;
+        private IntPtr _hookID = IntPtr.Zero;
+        private Win32.WinEventDelegate _winEventDelegate;
+        private bool _isPopupJustOpened = false;
 
         public event EventHandler<(string suggestion, int startIndex, int endIndex)> SuggestionAccepted;
 
@@ -29,10 +34,42 @@ namespace SpellCheckerDemo
             Background = Brushes.Transparent;
 
             var hwnd = new WindowInteropHelper(this).Handle;
-            var extendedStyle = Native.GetWindowLong(hwnd , Native.GWL_EXSTYLE);
-            Native.SetWindowLong(hwnd , Native.GWL_EXSTYLE , extendedStyle | Native.WS_EX_TRANSPARENT | Native.WS_EX_LAYERED);
+            var extendedStyle = Win32.GetWindowLong(hwnd , Win32.GWL_EXSTYLE);
+            Win32.SetWindowLong(hwnd , Win32.GWL_EXSTYLE , extendedStyle | Win32.WS_EX_TRANSPARENT | Win32.WS_EX_LAYERED);
 
             InitializeSuggestionPopup();
+            SetupWindowsHook();
+        }
+
+        private void SetupWindowsHook()
+        {
+            _winEventDelegate = new Win32.WinEventDelegate(WinEventProc);
+            _hookID = Win32.SetWinEventHook(Win32.EVENT_SYSTEM_FOREGROUND , Win32.EVENT_SYSTEM_FOREGROUND , IntPtr.Zero ,
+                _winEventDelegate , 0 , 0 , Win32.WINEVENT_OUTOFCONTEXT);
+            Debug.WriteLine($"Windows hook set up. Hook ID: {_hookID}");
+        }
+
+        private void WinEventProc(IntPtr hWinEventHook , uint eventType , IntPtr hwnd , int idObject , int idChild , uint dwEventThread , uint dwmsEventTime)
+        {
+            if (eventType == Win32.EVENT_SYSTEM_FOREGROUND)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    if (_suggestionPopup.IsOpen && !_isPopupJustOpened)
+                    {
+                        Debug.WriteLine("Closing suggestion popup due to foreground window change.");
+                        _suggestionPopup.IsOpen = false;
+                    }
+                    _isPopupJustOpened = false;
+                });
+            }
+        }
+
+        protected override void OnClosed(EventArgs e)
+        {
+            Win32.UnhookWinEvent(_hookID);
+            Debug.WriteLine("Windows hook unhooked.");
+            base.OnClosed(e);
         }
 
         private void InitializeSuggestionPopup()
@@ -40,7 +77,8 @@ namespace SpellCheckerDemo
             _suggestionPopup = new Popup
             {
                 AllowsTransparency = true ,
-                Placement = PlacementMode.MousePoint
+                Placement = PlacementMode.MousePoint ,
+                StaysOpen = true
             };
 
             var border = new Border
@@ -108,6 +146,7 @@ namespace SpellCheckerDemo
                 _suggestionPopup.Tag is (string incorrectWord, List<string> suggestions, int startIndex, int endIndex))
             {
                 string selectedSuggestion = textBlock.Text;
+                Debug.WriteLine($"Suggestion selected: {selectedSuggestion}");
                 SuggestionAccepted?.Invoke(this , (selectedSuggestion, startIndex, endIndex));
                 _suggestionPopup.IsOpen = false;
             }
@@ -117,31 +156,36 @@ namespace SpellCheckerDemo
         {
             if (sender is Line line && line.Tag is (string incorrectWord, List<string> suggestions, int startIndex, int endIndex))
             {
+                Debug.WriteLine($"Underline clicked. Incorrect word: {incorrectWord}");
                 _suggestionPanel.Children.Clear();
                 foreach (var suggestion in suggestions)
                 {
                     _suggestionPanel.Children.Add(CreateSuggestionRectangle(suggestion));
                 }
                 _suggestionPopup.Tag = (incorrectWord, suggestions, startIndex, endIndex);
+                _isPopupJustOpened = true;
                 _suggestionPopup.IsOpen = true;
+                Debug.WriteLine("Suggestion popup opened.");
+
+                e.Handled = true;
             }
         }
-
-
 
         public void DrawUnderlines(ErrorsUnderlines errors)
         {
             canvas.Children.Clear();
-            _underlines = new List<(System.Windows.Point, double, string, List<string>, int, int)>();
+            _underlines = new List<(Point, double, string, List<string>, int, int)>();
 
             DrawErrorType(errors.SpellingErrors , Brushes.Red);
             DrawErrorType(errors.GrammarError , Brushes.LightBlue);
             DrawErrorType(errors.PhrasingErrors , Brushes.Yellow);
             DrawErrorType(errors.TafqitErrors , Brushes.LightGreen);
             DrawErrorType(errors.TermErrors , Brushes.Purple);
+
+            Debug.WriteLine($"Total underlines drawn: {_underlines.Count}");
         }
 
-        private void DrawErrorType(List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> errorList , Brush color)
+        private void DrawErrorType(List<(Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> errorList , Brush color)
         {
             foreach (var error in errorList)
             {
@@ -161,6 +205,7 @@ namespace SpellCheckerDemo
 
                 line.MouseLeftButtonDown += Line_MouseLeftButtonDown;
                 canvas.Children.Add(line);
+                Debug.WriteLine($"Underline drawn for '{incorrectWord}' at ({line.X1}, {line.Y1})");
             }
         }
     }
@@ -176,5 +221,28 @@ namespace SpellCheckerDemo
 
         [System.Runtime.InteropServices.DllImport("user32.dll")]
         public static extern int SetWindowLong(IntPtr hwnd , int index , int newStyle);
+    }
+
+    internal static class Win32
+    {
+        public const int GWL_EXSTYLE = -20;
+        public const int WS_EX_TRANSPARENT = 0x00000020;
+        public const int WS_EX_LAYERED = 0x00080000;
+        public const uint EVENT_SYSTEM_FOREGROUND = 3;
+        public const uint WINEVENT_OUTOFCONTEXT = 0;
+
+        public delegate void WinEventDelegate(IntPtr hWinEventHook , uint eventType , IntPtr hwnd , int idObject , int idChild , uint dwEventThread , uint dwmsEventTime);
+
+        [DllImport("user32.dll")]
+        public static extern int GetWindowLong(IntPtr hwnd , int index);
+
+        [DllImport("user32.dll")]
+        public static extern int SetWindowLong(IntPtr hwnd , int index , int newStyle);
+
+        [DllImport("user32.dll")]
+        public static extern IntPtr SetWinEventHook(uint eventMin , uint eventMax , IntPtr hmodWinEventProc , WinEventDelegate lpfnWinEventProc , uint idProcess , uint idThread , uint dwFlags);
+
+        [DllImport("user32.dll")]
+        public static extern bool UnhookWinEvent(IntPtr hWinEventHook);
     }
 }
