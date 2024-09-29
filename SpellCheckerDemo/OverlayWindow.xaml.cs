@@ -176,7 +176,13 @@ namespace SpellCheckerDemo
             canvas.Children.Clear();
             _underlines = new List<(Point, double, string, List<string>, int, int)>();
 
-            DrawErrorType(errors.SpellingErrors , Brushes.Red);
+            var spellingErrorColor = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#EC2240"));
+            var grammarErrorColor = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#1873D3"));
+            var phrasingErrorColor = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#FFC940"));
+            var termsErrorColor = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#4A148C"));
+            var tafqitErrorColor = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#36CE8E"));
+
+            DrawErrorType(errors.SpellingErrors , spellingErrorColor);
             DrawErrorType(errors.GrammarError , Brushes.LightBlue);
             DrawErrorType(errors.PhrasingErrors , Brushes.Yellow);
             DrawErrorType(errors.TafqitErrors , Brushes.LightGreen);
