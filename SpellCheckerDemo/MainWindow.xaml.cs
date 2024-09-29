@@ -9,6 +9,8 @@ using System.Net.Http.Headers;
 using Newtonsoft.Json;
 using SpellCheckerDemo.Models;
 using System.Windows.Forms;
+using MessageBox = System.Windows.MessageBox;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace KeyboardTrackingApp
 {
@@ -28,7 +30,7 @@ namespace KeyboardTrackingApp
         private OverlayWindow _overlay;
         private readonly HttpClient _httpClient;
         private readonly string _apiUrl = "https://api-stg.qalam.ai/test/go";
-        private readonly string _bearerToken = "eyJraWQiOiJCSHhSWWpqenV6N1JpKzM4dVlCWkJcLzYwR3FIcVhqQjI2bHAxOVd6dTIwaz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJiY2RjNmEwMi0wYzEyLTQzNjItYjcxZS04MjY4MzkyYTI5YWUiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiY3VzdG9tOnV0bV9zcmMiOiJOQSIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTEuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0xX2xNc0lHNmQ3ZyIsImNvZ25pdG86dXNlcm5hbWUiOiJiY2RjNmEwMi0wYzEyLTQzNjItYjcxZS04MjY4MzkyYTI5YWUiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJhOTBmZGQwOC01MWE3LTRmY2MtOWI5NC02MzIxZTI5Y2FiZjYiLCJnaXZlbl9uYW1lIjoiV29yZC1QYWNrYWdlIiwiYXVkIjoiNTlxbTFsNGdqaWdzNzZvNWo5Mm5wNDYwanQiLCJldmVudF9pZCI6ImU5Yjk0OWFmLTc2ZDAtNDFlNS05ZTI0LTc2YjU3NWMyNDlkZSIsInRva2VuX3VzZSI6ImlkIiwiYXV0aF90aW1lIjoxNzI3NTkyMjMwLCJleHAiOjE3Mjc1OTU4MzAsImlhdCI6MTcyNzU5MjIzMCwiZmFtaWx5X25hbWUiOiJVc2VyIiwiZW1haWwiOiJ3aXJlamVmOTAwQGhld2Vlay5jb20ifQ.J_i-_h52dthd-Wwmm8GX1eXyLxGSUT3VnZaOKdqgBs4mpYwpWBnkwjaf8qQwUYqOXbg_fJarLYoQ0GEuo7PzlCLJmIE2T4qr7bfhxy53udEyucNevW7R2SNtL_yoxKahARTxD0uDPVjHS4l0a2dIkshr_-zCgdFl586K8UebcYcfzE0kKB2_YvTaDJsuOPSGEFp9ELWrlz2u8SUxZhF7FCyS5ZhziC-MaIgqD81AHhCwma6r1zj4B2f2Et0RP2WKpbnx5LJhzuSE9fs3Y-T9PAiWPOaexIq0CklXATOkbnilDkniEVKoEJjUW82xPnWlsfWBjDyuwZeWKbtZuHZ4Tg";
+        private readonly string _bearerToken = "eyJraWQiOiJCSHhSWWpqenV6N1JpKzM4dVlCWkJcLzYwR3FIcVhqQjI2bHAxOVd6dTIwaz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJiY2RjNmEwMi0wYzEyLTQzNjItYjcxZS04MjY4MzkyYTI5YWUiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiY3VzdG9tOnV0bV9zcmMiOiJOQSIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTEuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0xX2xNc0lHNmQ3ZyIsImNvZ25pdG86dXNlcm5hbWUiOiJiY2RjNmEwMi0wYzEyLTQzNjItYjcxZS04MjY4MzkyYTI5YWUiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJhOTBmZGQwOC01MWE3LTRmY2MtOWI5NC02MzIxZTI5Y2FiZjYiLCJnaXZlbl9uYW1lIjoiV29yZC1QYWNrYWdlIiwiYXVkIjoiNTlxbTFsNGdqaWdzNzZvNWo5Mm5wNDYwanQiLCJldmVudF9pZCI6IjJhMmI1M2NlLTM5YTgtNGE2Zi1iZDU5LWJkYmJlZjkyNWI1MSIsInRva2VuX3VzZSI6ImlkIiwiYXV0aF90aW1lIjoxNzI3NjAzMDgzLCJleHAiOjE3Mjc2MDY2ODMsImlhdCI6MTcyNzYwMzA4MywiZmFtaWx5X25hbWUiOiJVc2VyIiwiZW1haWwiOiJ3aXJlamVmOTAwQGhld2Vlay5jb20ifQ.ou9PZipeO6bUxBlnM1xpG3zUL2zkB10Etm9MvpCM9gMY84EWiZSChpkzXWqKO7BhgU2BiZRL6zCqdVeij3J8DHaIeSJTULa1YA2tHCSzVKnmw-_UWGEQUx70NRw5Kw8KS-r3E5Cxgp8jYRkn6ExTfs4tBMSNpsuazfrxHaJumU8b1Ec7PEl81uaTSNcnURqjN1aRLFhCEJ8KhF5go1EG5_eDhLF_dG5fcfrxcoCT6u4n_JM2WRNoyjkbCFKcQdpwN_nPC1EdTNvoalMHj_FKJu0xbRUTSp-3MrSZVNguoRvGOq2M6_3GlSWad8YzCsU13dLY4ZVIZSbY55uLXZSmvw";
         private string _documentId;
         private Screen _currentScreen;
 
@@ -81,6 +83,57 @@ namespace KeyboardTrackingApp
         {
             ReplaceWord(e.suggestion , e.startIndex , e.endIndex);
             CheckForIncorrectWords(); // Recheck for incorrect words after replacement
+        }
+
+        public async void ApplyAllSuggestions()
+        {
+            IntPtr notepadHandle = FindNotepadWindow();
+            if (notepadHandle == IntPtr.Zero)
+            {
+                System.Windows.MessageBox.Show("Failed to find Notepad window.");
+                return;
+            }
+
+            IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
+            if (editHandle == IntPtr.Zero)
+            {
+                System.Windows.MessageBox.Show("Failed to find Edit control in Notepad.");
+                return;
+            }
+            string text = GetNotepadContent(notepadHandle);
+            var apiResponse = await GetSpellCheckResultsAsync(text);
+
+            ErrorsUnderlines errors = new ErrorsUnderlines();
+
+            if (editHandle != IntPtr.Zero)
+            {
+                errors.SpellingErrors = GetSpellingErrors(editHandle , apiResponse, text);
+                errors.GrammarError = GetGrammarErrors(editHandle , apiResponse, text);
+                errors.PhrasingErrors = GetPhrasingErrors(editHandle , apiResponse, text);
+                errors.TafqitErrors = GetTafqitErrors(editHandle , apiResponse, text);
+                errors.TermErrors = GetTermErrors(editHandle , apiResponse, text);
+            }
+            foreach (var error in errors.SpellingErrors)
+            {
+                ReplaceWord(error.suggestions.FirstOrDefault() , error.startIndex , error.endIndex);
+            }
+            foreach (var error in errors.GrammarError)
+            {
+                ReplaceWord(error.suggestions.FirstOrDefault() , error.startIndex , error.endIndex);
+            }
+            foreach (var error in errors.PhrasingErrors)
+            {
+                ReplaceWord(error.suggestions.FirstOrDefault() , error.startIndex , error.endIndex);
+            }
+            foreach (var error in errors.TafqitErrors)
+            {
+                ReplaceWord(error.suggestions.FirstOrDefault() , error.startIndex , error.endIndex);
+            }
+            foreach (var error in errors.TermErrors)
+            {
+                ReplaceWord(error.suggestions.FirstOrDefault() , error.startIndex , error.endIndex);
+            }
+            CheckForIncorrectWords();
         }
 
         private void ReplaceWord(string suggestion , int startIndex , int endIndex)
@@ -158,11 +211,11 @@ namespace KeyboardTrackingApp
 
             if (editHandle != IntPtr.Zero)
             {
-                errors.SpellingErrors = GetSpellingErrors(editHandle,apiResponse);
-                errors.GrammarError = GetGrammarErrors(editHandle,apiResponse);
-                errors.PhrasingErrors = GetPhrasingErrors(editHandle, apiResponse);
-                errors.TafqitErrors = GetTafqitErrors(editHandle,apiResponse);
-                errors.TermErrors = GetTermErrors(editHandle,apiResponse);
+                errors.SpellingErrors = GetSpellingErrors(editHandle,apiResponse,text);
+                errors.GrammarError = GetGrammarErrors(editHandle,apiResponse, text);
+                errors.PhrasingErrors = GetPhrasingErrors(editHandle, apiResponse, text);
+                errors.TafqitErrors = GetTafqitErrors(editHandle,apiResponse, text);
+                errors.TermErrors = GetTermErrors(editHandle,apiResponse, text);
             }
 
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
@@ -176,10 +229,9 @@ namespace KeyboardTrackingApp
         #region GetErrors
         private List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> GetSpellingErrors(
     IntPtr editHandle ,
-    ApiResponse apiResponse)
+    ApiResponse apiResponse,
+    string text)
         {
-            string text = _allText.ToString();
-
             List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> spellingErrors = new List<(System.Windows.Point, double, string, List<string>, int, int)>();
 
             IntPtr hdc = NativeMethods.GetDC(editHandle);
@@ -227,10 +279,9 @@ namespace KeyboardTrackingApp
 
         private List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> GetGrammarErrors(
             IntPtr editHandle ,
-            ApiResponse apiResponse)
+            ApiResponse apiResponse,
+            string text)
         {
-            string text = _allText.ToString();
-
             List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> spellingErrors = new List<(System.Windows.Point, double, string, List<string>, int, int)>();
 
             IntPtr hdc = NativeMethods.GetDC(editHandle);
@@ -279,10 +330,9 @@ namespace KeyboardTrackingApp
 
         private List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> GetPhrasingErrors(
             IntPtr editHandle ,
-            ApiResponse apiResponse)
+            ApiResponse apiResponse,
+            string text)
         {
-            string text = _allText.ToString();
-
             List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> spellingErrors = new List<(System.Windows.Point, double, string, List<string>, int, int)>();
 
             IntPtr hdc = NativeMethods.GetDC(editHandle);
@@ -330,10 +380,9 @@ namespace KeyboardTrackingApp
 
         private List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> GetTafqitErrors(
             IntPtr editHandle ,
-            ApiResponse apiResponse)
+            ApiResponse apiResponse,
+            string text)
         {
-            string text = _allText.ToString();
-
             List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> spellingErrors = new List<(System.Windows.Point, double, string, List<string>, int, int)>();
 
             IntPtr hdc = NativeMethods.GetDC(editHandle);
@@ -378,13 +427,11 @@ namespace KeyboardTrackingApp
             NativeMethods.ReleaseDC(editHandle , hdc);
             return spellingErrors;
         }
-
         private List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> GetTermErrors(
             IntPtr editHandle ,
-            ApiResponse apiResponse)
+            ApiResponse apiResponse,
+            string text)
         {
-            string text = _allText.ToString();
-
             List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> spellingErrors = new List<(System.Windows.Point, double, string, List<string>, int, int)>();
 
             IntPtr hdc = NativeMethods.GetDC(editHandle);
@@ -685,10 +732,13 @@ namespace KeyboardTrackingApp
             }
         }
 
-        private string GetNotepadContent()
+        private string GetNotepadContent(IntPtr? notepadHandle = null)
         {
-            IntPtr notepadHandle = NativeMethods.GetForegroundWindow();
-            IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
+            if (notepadHandle == null)
+            {
+                notepadHandle = NativeMethods.GetForegroundWindow();
+            }
+            IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle.Value , IntPtr.Zero , "Edit" , null);
             if (editHandle != IntPtr.Zero)
             {
                 int length = (int)NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETTEXTLENGTH , IntPtr.Zero , null);

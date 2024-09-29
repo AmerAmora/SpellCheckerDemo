@@ -2,15 +2,15 @@
 
 public class ErrorsUnderlines
 {
-    public List<(System.Windows.Point, double, string, List<string>, int, int)> SpellingErrors { get; set; } = new();
+    public List<(System.Windows.Point point, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> SpellingErrors { get; set; } = new();
 
-    public List<(System.Windows.Point, double, string, List<string>, int, int)> GrammarError { get; set; } = new();
+    public List<(System.Windows.Point point, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> GrammarError { get; set; } = new();
 
-    public List<(System.Windows.Point, double, string, List<string>, int, int)> PhrasingErrors { get; set; } = new();
+    public List<(System.Windows.Point point, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> PhrasingErrors { get; set; } = new();
 
-    public List<(System.Windows.Point, double, string, List<string>, int, int)> TafqitErrors { get; set; } = new();
+    public List<(System.Windows.Point point, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> TafqitErrors { get; set; } = new();
 
-    public List<(System.Windows.Point, double, string, List<string>, int, int)> OtherErrors { get; set; } = new();
+    public List<(System.Windows.Point point, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> OtherErrors { get; set; } = new();
 
-    public List<(System.Windows.Point, double, string, List<string>, int, int)> TermErrors { get; set; } = new();
+    public List<(System.Windows.Point point, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> TermErrors { get; set; } = new();
 }

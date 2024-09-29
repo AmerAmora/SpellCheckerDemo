@@ -1,4 +1,5 @@
-﻿using System;
+﻿using KeyboardTrackingApp;
+using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows;
@@ -29,6 +30,8 @@ namespace SpellCheckerDemo
             };
 
             this.MouseDoubleClick += HandleDoubleClick;
+
+            ErrorCountGrid.MouseLeftButtonDown += ErrorCountGrid_MouseLeftButtonDown;
 
             SetupCaretTracking();
         }
@@ -128,6 +131,24 @@ namespace SpellCheckerDemo
                 this.Left = screenPoint.X + 10;
                 this.Top = screenPoint.Y + 10;
             }
+        }
+
+        private void ErrorCountGrid_MouseLeftButtonDown(object sender , MouseButtonEventArgs e)
+        {
+            ErrorCountGrid.Visibility = Visibility.Collapsed;
+            FixAllErrorsButton.Visibility = Visibility.Visible;
+            MainWindow.Width = 150;
+        }
+
+        private void FixAllErrorsButton_Click(object sender , RoutedEventArgs e)
+        {
+            // Call method in MainWindow to apply all suggestions
+            ( (MainWindow)Application.Current.MainWindow ).ApplyAllSuggestions();
+
+            // Hide the button and show the error count grid again
+            FixAllErrorsButton.Visibility = Visibility.Collapsed;
+            ErrorCountGrid.Visibility = Visibility.Visible;
+            MainWindow.Width = 70;
         }
     }
 }
