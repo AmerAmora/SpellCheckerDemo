@@ -19,7 +19,7 @@ namespace SpellCheckerDemo
         private Popup _suggestionPopup;
         private StackPanel _suggestionPanel;
         private IntPtr _hookID = IntPtr.Zero;
-        private Win32.WinEventDelegate _winEventDelegate;
+        private NativeMethods.WinEventDelegate _winEventDelegate;
         private bool _isPopupJustOpened = false;
 
         public event EventHandler<(string suggestion, int startIndex, int endIndex)> SuggestionAccepted;
@@ -34,8 +34,8 @@ namespace SpellCheckerDemo
             Background = Brushes.Transparent;
 
             var hwnd = new WindowInteropHelper(this).Handle;
-            var extendedStyle = Win32.GetWindowLong(hwnd , Win32.GWL_EXSTYLE);
-            Win32.SetWindowLong(hwnd , Win32.GWL_EXSTYLE , extendedStyle | Win32.WS_EX_TRANSPARENT | Win32.WS_EX_LAYERED);
+            var extendedStyle = NativeMethods.GetWindowLong(hwnd , NativeMethods.GWL_EXSTYLE);
+            NativeMethods.SetWindowLong(hwnd , NativeMethods.GWL_EXSTYLE , extendedStyle | NativeMethods.WS_EX_TRANSPARENT | NativeMethods.WS_EX_LAYERED);
 
             InitializeSuggestionPopup();
             SetupWindowsHook();
@@ -43,15 +43,15 @@ namespace SpellCheckerDemo
 
         private void SetupWindowsHook()
         {
-            _winEventDelegate = new Win32.WinEventDelegate(WinEventProc);
-            _hookID = Win32.SetWinEventHook(Win32.EVENT_SYSTEM_FOREGROUND , Win32.EVENT_SYSTEM_FOREGROUND , IntPtr.Zero ,
-                _winEventDelegate , 0 , 0 , Win32.WINEVENT_OUTOFCONTEXT);
+            _winEventDelegate = new NativeMethods.WinEventDelegate(WinEventProc);
+            _hookID = NativeMethods.SetWinEventHook(NativeMethods.EVENT_SYSTEM_FOREGROUND , NativeMethods.EVENT_SYSTEM_FOREGROUND , IntPtr.Zero ,
+                _winEventDelegate , 0 , 0 , NativeMethods.WINEVENT_OUTOFCONTEXT);
             Debug.WriteLine($"Windows hook set up. Hook ID: {_hookID}");
         }
 
         private void WinEventProc(IntPtr hWinEventHook , uint eventType , IntPtr hwnd , int idObject , int idChild , uint dwEventThread , uint dwmsEventTime)
         {
-            if (eventType == Win32.EVENT_SYSTEM_FOREGROUND)
+            if (eventType == NativeMethods.EVENT_SYSTEM_FOREGROUND)
             {
                 Dispatcher.Invoke(() =>
                 {
@@ -67,7 +67,7 @@ namespace SpellCheckerDemo
 
         protected override void OnClosed(EventArgs e)
         {
-            Win32.UnhookWinEvent(_hookID);
+            NativeMethods.UnhookWinEvent(_hookID);
             Debug.WriteLine("Windows hook unhooked.");
             base.OnClosed(e);
         }
@@ -208,41 +208,5 @@ namespace SpellCheckerDemo
                 Debug.WriteLine($"Underline drawn for '{incorrectWord}' at ({line.X1}, {line.Y1})");
             }
         }
-    }
-
-    public static class Native
-    {
-        public const int GWL_EXSTYLE = -20;
-        public const int WS_EX_TRANSPARENT = 0x00000020;
-        public const int WS_EX_LAYERED = 0x00080000;
-
-        [System.Runtime.InteropServices.DllImport("user32.dll")]
-        public static extern int GetWindowLong(IntPtr hwnd , int index);
-
-        [System.Runtime.InteropServices.DllImport("user32.dll")]
-        public static extern int SetWindowLong(IntPtr hwnd , int index , int newStyle);
-    }
-
-    internal static class Win32
-    {
-        public const int GWL_EXSTYLE = -20;
-        public const int WS_EX_TRANSPARENT = 0x00000020;
-        public const int WS_EX_LAYERED = 0x00080000;
-        public const uint EVENT_SYSTEM_FOREGROUND = 3;
-        public const uint WINEVENT_OUTOFCONTEXT = 0;
-
-        public delegate void WinEventDelegate(IntPtr hWinEventHook , uint eventType , IntPtr hwnd , int idObject , int idChild , uint dwEventThread , uint dwmsEventTime);
-
-        [DllImport("user32.dll")]
-        public static extern int GetWindowLong(IntPtr hwnd , int index);
-
-        [DllImport("user32.dll")]
-        public static extern int SetWindowLong(IntPtr hwnd , int index , int newStyle);
-
-        [DllImport("user32.dll")]
-        public static extern IntPtr SetWinEventHook(uint eventMin , uint eventMax , IntPtr hmodWinEventProc , WinEventDelegate lpfnWinEventProc , uint idProcess , uint idThread , uint dwFlags);
-
-        [DllImport("user32.dll")]
-        public static extern bool UnhookWinEvent(IntPtr hWinEventHook);
     }
 }

@@ -58,8 +58,31 @@ public static class NativeMethods
 
     [DllImport("user32.dll" , SetLastError = true)]
     public static extern uint GetWindowThreadProcessId(IntPtr hWnd , out int lpdwProcessId);
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    public static extern int GetWindowLong(IntPtr hwnd , int index);
 
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    public static extern int SetWindowLong(IntPtr hwnd , int index , int newStyle);
 
+    [DllImport("gdi32.dll")]
+    public static extern IntPtr SelectObject(IntPtr hdc , IntPtr hgdiobj);
+
+    [DllImport("gdi32.dll" , CharSet = CharSet.Unicode)]
+    public static extern bool GetTextExtentPoint32(IntPtr hdc , string lpString , int cbString , out SIZE lpSize);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetDC(IntPtr hWnd);
+
+    [DllImport("user32.dll")]
+    public static extern int ReleaseDC(IntPtr hWnd , IntPtr hDC);
+
+    public delegate void WinEventDelegate(IntPtr hWinEventHook , uint eventType , IntPtr hwnd , int idObject , int idChild , uint dwEventThread , uint dwmsEventTime);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr SetWinEventHook(uint eventMin , uint eventMax , IntPtr hmodWinEventProc , WinEventDelegate lpfnWinEventProc , uint idProcess , uint idThread , uint dwFlags);
+
+    [DllImport("user32.dll")]
+    public static extern bool UnhookWinEvent(IntPtr hWinEventHook);
     public delegate bool EnumWindowsProc(IntPtr hWnd , IntPtr lParam);
     public const int EM_POSFROMCHAR = 0xD6;
     public const uint WM_GETTEXT = 0x000D;
@@ -69,6 +92,12 @@ public static class NativeMethods
     public const int KEYEVENTF_KEYUP = 0x0002;
     public const Int32 WM_CHAR = 0x0102;
     public const int EM_SETSEL = 0x00B1;
+    public const int GWL_EXSTYLE = -20;
+    public const int WS_EX_TRANSPARENT = 0x00000020;
+    public const int WS_EX_LAYERED = 0x00080000;
+    public const int WM_GETFONT = 0x0031;
+    public const uint EVENT_SYSTEM_FOREGROUND = 3;
+    public const uint WINEVENT_OUTOFCONTEXT = 0;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT
@@ -108,20 +137,6 @@ public static class NativeMethods
         public int Right;
         public int Bottom;
     }
-
-    public const int WM_GETFONT = 0x0031;
-
-    [DllImport("gdi32.dll")]
-    public static extern IntPtr SelectObject(IntPtr hdc , IntPtr hgdiobj);
-
-    [DllImport("gdi32.dll" , CharSet = CharSet.Unicode)]
-    public static extern bool GetTextExtentPoint32(IntPtr hdc , string lpString , int cbString , out SIZE lpSize);
-
-    [DllImport("user32.dll")]
-    public static extern IntPtr GetDC(IntPtr hWnd);
-
-    [DllImport("user32.dll")]
-    public static extern int ReleaseDC(IntPtr hWnd , IntPtr hDC);
 
     [StructLayout(LayoutKind.Sequential)]
     public struct SIZE
