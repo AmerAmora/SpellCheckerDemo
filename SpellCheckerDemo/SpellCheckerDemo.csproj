@@ -9,7 +9,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Logo.png" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="MouseKeyHook" Version="5.7.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Logo.png" />
   </ItemGroup>
 
 </Project>

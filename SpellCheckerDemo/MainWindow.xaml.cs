@@ -1,14 +1,14 @@
-﻿using System;
-using System.Diagnostics;
-using System.Runtime.InteropServices;
+﻿using System.Diagnostics;
 using System.Text;
-using System.Threading;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Documents;
-using System.Windows.Media;
 using Keys = System.Windows.Forms.Keys;
 using System.Windows.Threading;
+using SpellCheckerDemo;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using Newtonsoft.Json;
+using SpellCheckerDemo.Models;
+using System.Windows.Forms;
 
 namespace KeyboardTrackingApp
 {
@@ -20,40 +20,17 @@ namespace KeyboardTrackingApp
         private StringBuilder _allText = new StringBuilder();
         private string _lastActiveWindowTitle = string.Empty;
         private DispatcherTimer _windowCheckTimer;
-        private SuggestionsControl SuggestionsControl;
-
-        [DllImport("user32.dll")]
-        public static extern IntPtr GetForegroundWindow();
-
-        [DllImport("user32.dll")]
-        public static extern bool SetForegroundWindow(IntPtr hWnd);
-
-        [DllImport("user32.dll")]
-        public static extern void keybd_event(byte bVk , byte bScan , uint dwFlags , UIntPtr dwExtraInfo);
-
-        [DllImport("user32.dll")]
-        public static extern bool AttachThreadInput(uint idAttach , uint idAttachTo , bool fAttach);
-
-        [DllImport("user32.dll")]
-        public static extern uint GetWindowThreadProcessId(IntPtr hWnd , IntPtr ProcessId);
-
-        [DllImport("user32.dll")]
-        static extern bool GetKeyboardState(byte[] lpKeyState);
-
-        [DllImport("user32.dll")]
-        static extern int ToUnicode(uint wVirtKey , uint wScanCode , byte[] lpKeyState ,
-                                    [Out, MarshalAs(UnmanagedType.LPWStr)] StringBuilder pwszBuff , int cchBuff , uint wFlags);
-
-        [DllImport("user32.dll")]
-        static extern uint MapVirtualKey(uint uCode , uint uMapType);
-
-        [DllImport("kernel32.dll")]
-        static extern uint GetCurrentThreadId();
-
-        [DllImport("user32.dll")]
-        static extern int GetWindowText(IntPtr hWnd , StringBuilder text , int count);
-
-        private const int KEYEVENTF_KEYUP = 0x0002;
+        private DispatcherTimer _processCheckTimer;
+        private int? _notepadProcessId;
+        private SuggestionsControl _suggestionsControl;
+        private DispatcherTimer _contentSyncTimer;
+        private FloatingPointWindow _floatingPoint;
+        private OverlayWindow _overlay;
+        private readonly HttpClient _httpClient;
+        private readonly string _apiUrl = "https://api-stg.qalam.ai/test/go";
+        private readonly string _bearerToken = "eyJraWQiOiJCSHhSWWpqenV6N1JpKzM4dVlCWkJcLzYwR3FIcVhqQjI2bHAxOVd6dTIwaz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJiY2RjNmEwMi0wYzEyLTQzNjItYjcxZS04MjY4MzkyYTI5YWUiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiY3VzdG9tOnV0bV9zcmMiOiJOQSIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTEuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0xX2xNc0lHNmQ3ZyIsImNvZ25pdG86dXNlcm5hbWUiOiJiY2RjNmEwMi0wYzEyLTQzNjItYjcxZS04MjY4MzkyYTI5YWUiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJhOTBmZGQwOC01MWE3LTRmY2MtOWI5NC02MzIxZTI5Y2FiZjYiLCJnaXZlbl9uYW1lIjoiV29yZC1QYWNrYWdlIiwiYXVkIjoiNTlxbTFsNGdqaWdzNzZvNWo5Mm5wNDYwanQiLCJldmVudF9pZCI6ImU5Yjk0OWFmLTc2ZDAtNDFlNS05ZTI0LTc2YjU3NWMyNDlkZSIsInRva2VuX3VzZSI6ImlkIiwiYXV0aF90aW1lIjoxNzI3NTkyMjMwLCJleHAiOjE3Mjc1OTU4MzAsImlhdCI6MTcyNzU5MjIzMCwiZmFtaWx5X25hbWUiOiJVc2VyIiwiZW1haWwiOiJ3aXJlamVmOTAwQGhld2Vlay5jb20ifQ.J_i-_h52dthd-Wwmm8GX1eXyLxGSUT3VnZaOKdqgBs4mpYwpWBnkwjaf8qQwUYqOXbg_fJarLYoQ0GEuo7PzlCLJmIE2T4qr7bfhxy53udEyucNevW7R2SNtL_yoxKahARTxD0uDPVjHS4l0a2dIkshr_-zCgdFl586K8UebcYcfzE0kKB2_YvTaDJsuOPSGEFp9ELWrlz2u8SUxZhF7FCyS5ZhziC-MaIgqD81AHhCwma6r1zj4B2f2Et0RP2WKpbnx5LJhzuSE9fs3Y-T9PAiWPOaexIq0CklXATOkbnilDkniEVKoEJjUW82xPnWlsfWBjDyuwZeWKbtZuHZ4Tg";
+        private string _documentId;
+        private Screen _currentScreen;
 
         public MainWindow()
         {
@@ -62,90 +39,567 @@ namespace KeyboardTrackingApp
             _keyboardHook.KeyPressed += OnKeyPressed;
 
             // Initialize SuggestionsControl
-            SuggestionsControl = new SuggestionsControl();
-            SuggestionsControl.SuggestionSelected += OnSuggestionSelected;
-            SuggestionsPopup.Child = SuggestionsControl;
+            _suggestionsControl = new SuggestionsControl();
+            SuggestionsPopup.Child = _suggestionsControl;
 
-            _windowCheckTimer = new DispatcherTimer();
-            _windowCheckTimer.Interval = TimeSpan.FromMilliseconds(500);
+            _windowCheckTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(100)
+            };
             _windowCheckTimer.Tick += WindowCheckTimer_Tick;
             _windowCheckTimer.Start();
+
+            _processCheckTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(1)
+            };
+            _processCheckTimer.Tick += ProcessCheckTimer_Tick;
+            _processCheckTimer.Start();
+
+            _contentSyncTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(1)
+            };
+            _contentSyncTimer.Tick += ContentSyncTimer_Tick;
+            _contentSyncTimer.Start();
+
+            _floatingPoint = new FloatingPointWindow();
+            _floatingPoint.Hide();
+
+            _overlay = new OverlayWindow();
+            _overlay.Show();
+            _overlay.SuggestionAccepted += Overlay_SuggestionAccepted;
+
+            this.Hide();
+            _httpClient = new HttpClient();
+            _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*"));
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer" , _bearerToken);
+            _documentId = Guid.NewGuid().ToString(); // Generate a unique document ID
+        }
+
+        private void Overlay_SuggestionAccepted(object sender , (string suggestion, int startIndex, int endIndex) e)
+        {
+            ReplaceWord(e.suggestion , e.startIndex , e.endIndex);
+            CheckForIncorrectWords(); // Recheck for incorrect words after replacement
+        }
+
+        private void ReplaceWord(string suggestion , int startIndex , int endIndex)
+        {
+            if (_notepadProcessId == null)
+            {
+                System.Windows.MessageBox.Show("Notepad process ID is not set.");
+                return;
+            }
+
+            IntPtr notepadHandle = FindNotepadWindow();
+            if (notepadHandle == IntPtr.Zero)
+            {
+                System.Windows.MessageBox.Show("Failed to find Notepad window.");
+                return;
+            }
+
+            IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
+            if (editHandle == IntPtr.Zero)
+            {
+                System.Windows.MessageBox.Show("Failed to find Edit control in Notepad.");
+                return;
+            }
+
+            // Bring Notepad to the foreground
+            NativeMethods.SetForegroundWindow(notepadHandle);
+
+            // Select the incorrect word
+            NativeMethods.SendMessage(editHandle , NativeMethods.EM_SETSEL , (IntPtr)startIndex , (IntPtr)endIndex+1);
+
+            // Replace the selection with the suggestion
+            foreach (char c in suggestion)
+            {
+                NativeMethods.SendMessage(editHandle , NativeMethods.WM_CHAR , (IntPtr)c , IntPtr.Zero);
+            }
+
+            // Update our internal text representation
+            //_allText.Remove(startIndex , endIndex - startIndex);
+            //_allText.Insert(startIndex , suggestion);
+        }
+
+        private IntPtr FindNotepadWindow()
+        {
+            IntPtr result = IntPtr.Zero;
+            NativeMethods.EnumWindows((hWnd , lParam) =>
+            {
+                int processId;
+                NativeMethods.GetWindowThreadProcessId(hWnd , out processId);
+                if (processId == _notepadProcessId)
+                {
+                    result = hWnd;
+                    return false; // Stop enumeration
+                }
+                return true; // Continue enumeration
+            } , IntPtr.Zero);
+            return result;
+        }
+
+        private async void CheckForIncorrectWords()
+        {
+            string text = _allText.ToString();
+            var apiResponse = await GetSpellCheckResultsAsync(text);
+
+            if (apiResponse?.spellCheckResponse?.results?.flagged_tokens == null)
+            {
+                UpdateErrorCount(0);
+                _overlay.DrawUnderlines(new ErrorsUnderlines()); // Clear all underlines
+                Console.WriteLine("No flagged tokens found or API response was null.");
+                return;
+            }
+            ErrorsUnderlines errors = new ErrorsUnderlines();
+
+            IntPtr notepadHandle = NativeMethods.GetForegroundWindow();
+            IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
+
+            if (editHandle != IntPtr.Zero)
+            {
+                errors.SpellingErrors = GetSpellingErrors(editHandle,apiResponse);
+                errors.GrammarError = GetGrammarErrors(editHandle,apiResponse);
+                errors.PhrasingErrors = GetPhrasingErrors(editHandle, apiResponse);
+                errors.TafqitErrors = GetTafqitErrors(editHandle,apiResponse);
+                errors.TermErrors = GetTermErrors(editHandle,apiResponse);
+            }
+
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                var count = errors.SpellingErrors.Count + errors.GrammarError.Count + errors.PhrasingErrors.Count + errors.TafqitErrors.Count + errors.TermErrors.Count;
+                _overlay.DrawUnderlines(errors);
+                UpdateErrorCount(count);
+            });
+        }
+
+        #region GetErrors
+        private List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> GetSpellingErrors(
+    IntPtr editHandle ,
+    ApiResponse apiResponse)
+        {
+            string text = _allText.ToString();
+
+            List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> spellingErrors = new List<(System.Windows.Point, double, string, List<string>, int, int)>();
+
+            IntPtr hdc = NativeMethods.GetDC(editHandle);
+            IntPtr hFont = NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETFONT , IntPtr.Zero , IntPtr.Zero);
+            IntPtr oldFont = NativeMethods.SelectObject(hdc , hFont);
+
+            foreach (var flaggedToken in apiResponse.spellCheckResponse.results.flagged_tokens)
+            {
+                int startIndex = flaggedToken.start_index;
+                int endIndex = flaggedToken.end_index;
+                string incorrectWord = "";
+                if (startIndex >= 0 && startIndex < text.Length && endIndex <= text.Length && endIndex > startIndex)
+                {
+                    incorrectWord = text.Substring(startIndex , endIndex - startIndex);
+                }
+                else
+                {
+                    return spellingErrors; 
+                }
+
+                // Measure the text width
+                NativeMethods.SIZE size;
+                NativeMethods.GetTextExtentPoint32(hdc , incorrectWord , incorrectWord.Length , out size);
+
+                // Get the position of the start of the word
+                IntPtr charPos = NativeMethods.SendMessage(editHandle , NativeMethods.EM_POSFROMCHAR , (IntPtr)startIndex , IntPtr.Zero);
+                int x = ( charPos.ToInt32() & 0xFFFF );
+                int y = ( ( charPos.ToInt32() >> 16 ) & 0xFFFF );
+
+                // Adjust for RTL text
+                x = x - size.cx; // Move the starting point to the right edge of the word
+
+                NativeMethods.POINT clientPoint = new NativeMethods.POINT { X = x , Y = y };
+                NativeMethods.ClientToScreen(editHandle , ref clientPoint);
+
+                List<string> suggestions = flaggedToken.suggestions.Select(s => s.text).ToList();
+                Point wpfPoint = ScreenToWpf(new Point(clientPoint.X , clientPoint.Y));
+                spellingErrors.Add((new System.Windows.Point(wpfPoint.X , wpfPoint.Y + 20), size.cx, incorrectWord, suggestions, startIndex, endIndex));
+            }
+
+            NativeMethods.SelectObject(hdc , oldFont);
+            NativeMethods.ReleaseDC(editHandle , hdc);
+            return spellingErrors;
+        }
+
+        private List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> GetGrammarErrors(
+            IntPtr editHandle ,
+            ApiResponse apiResponse)
+        {
+            string text = _allText.ToString();
+
+            List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> spellingErrors = new List<(System.Windows.Point, double, string, List<string>, int, int)>();
+
+            IntPtr hdc = NativeMethods.GetDC(editHandle);
+            IntPtr hFont = NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETFONT , IntPtr.Zero , IntPtr.Zero);
+            IntPtr oldFont = NativeMethods.SelectObject(hdc , hFont);
+            if (apiResponse.grammarResponse.results.flagged_tokens is null)
+                return new();
+
+            foreach (var flaggedToken in apiResponse.grammarResponse.results.flagged_tokens)
+            {
+                int startIndex = flaggedToken.start_index;
+                int endIndex = flaggedToken.end_index;
+                string incorrectWord = "";
+                if (startIndex >= 0 && startIndex < text.Length && endIndex <= text.Length && endIndex > startIndex)
+                {
+                    incorrectWord = text.Substring(startIndex , endIndex - startIndex);
+                }
+                else
+                {
+                    return spellingErrors;
+                }
+                // Measure the text width
+                NativeMethods.SIZE size;
+                NativeMethods.GetTextExtentPoint32(hdc , incorrectWord , incorrectWord.Length , out size);
+
+                // Get the position of the start of the word
+                IntPtr charPos = NativeMethods.SendMessage(editHandle , NativeMethods.EM_POSFROMCHAR , (IntPtr)startIndex , IntPtr.Zero);
+                int x = ( charPos.ToInt32() & 0xFFFF );
+                int y = ( ( charPos.ToInt32() >> 16 ) & 0xFFFF );
+
+                // Adjust for RTL text
+                x -= size.cx; // Move the starting point to the right edge of the word
+
+                NativeMethods.POINT clientPoint = new NativeMethods.POINT { X = x , Y = y };
+                NativeMethods.ClientToScreen(editHandle , ref clientPoint);
+
+                List<string> suggestions = flaggedToken.suggestions.Select(s => s.text).ToList();
+                Point wpfPoint = ScreenToWpf(new Point(clientPoint.X , clientPoint.Y));
+                spellingErrors.Add((new System.Windows.Point(wpfPoint.X , wpfPoint.Y + 20), size.cx, incorrectWord, suggestions, startIndex, endIndex));
+            }
+
+            NativeMethods.SelectObject(hdc , oldFont);
+            NativeMethods.ReleaseDC(editHandle , hdc);
+            return spellingErrors;
+        }
+
+        private List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> GetPhrasingErrors(
+            IntPtr editHandle ,
+            ApiResponse apiResponse)
+        {
+            string text = _allText.ToString();
+
+            List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> spellingErrors = new List<(System.Windows.Point, double, string, List<string>, int, int)>();
+
+            IntPtr hdc = NativeMethods.GetDC(editHandle);
+            IntPtr hFont = NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETFONT , IntPtr.Zero , IntPtr.Zero);
+            IntPtr oldFont = NativeMethods.SelectObject(hdc , hFont);
+            if (apiResponse.phrasingResponse?.results?.flagged_tokens is null)
+                return new();
+            foreach (var flaggedToken in apiResponse.phrasingResponse.results.flagged_tokens)
+            {
+                int startIndex = flaggedToken.start_index;
+                int endIndex = flaggedToken.end_index;
+                string incorrectWord = "";
+                if (startIndex >= 0 && startIndex < text.Length && endIndex <= text.Length && endIndex > startIndex)
+                {
+                    incorrectWord = text.Substring(startIndex , endIndex - startIndex);
+                }
+                else
+                {
+                    return spellingErrors;
+                }
+                // Measure the text width
+                NativeMethods.SIZE size;
+                NativeMethods.GetTextExtentPoint32(hdc , incorrectWord , incorrectWord.Length , out size);
+
+                // Get the position of the start of the word
+                IntPtr charPos = NativeMethods.SendMessage(editHandle , NativeMethods.EM_POSFROMCHAR , (IntPtr)startIndex , IntPtr.Zero);
+                int x = ( charPos.ToInt32() & 0xFFFF );
+                int y = ( ( charPos.ToInt32() >> 16 ) & 0xFFFF );
+
+                // Adjust for RTL text
+                x -= size.cx; // Move the starting point to the right edge of the word
+
+                NativeMethods.POINT clientPoint = new NativeMethods.POINT { X = x , Y = y };
+                NativeMethods.ClientToScreen(editHandle , ref clientPoint);
+
+                List<string> suggestions = flaggedToken.suggestions.Select(s => s.text).ToList();
+                Point wpfPoint = ScreenToWpf(new Point(clientPoint.X , clientPoint.Y));
+                spellingErrors.Add((new System.Windows.Point(wpfPoint.X , wpfPoint.Y + 20), size.cx, incorrectWord, suggestions, startIndex, endIndex));
+            }
+
+            NativeMethods.SelectObject(hdc , oldFont);
+            NativeMethods.ReleaseDC(editHandle , hdc);
+            return spellingErrors;
+        }
+
+        private List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> GetTafqitErrors(
+            IntPtr editHandle ,
+            ApiResponse apiResponse)
+        {
+            string text = _allText.ToString();
+
+            List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> spellingErrors = new List<(System.Windows.Point, double, string, List<string>, int, int)>();
+
+            IntPtr hdc = NativeMethods.GetDC(editHandle);
+            IntPtr hFont = NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETFONT , IntPtr.Zero , IntPtr.Zero);
+            IntPtr oldFont = NativeMethods.SelectObject(hdc , hFont);
+            if (apiResponse.tafqitResponse?.results?.flagged_tokens is null)
+                return new();
+            foreach (var flaggedToken in apiResponse.tafqitResponse?.results?.flagged_tokens)
+            {
+                int startIndex = flaggedToken.start_index;
+                int endIndex = flaggedToken.end_index;
+                string incorrectWord = "";
+                if (startIndex >= 0 && startIndex < text.Length && endIndex <= text.Length && endIndex > startIndex)
+                {
+                    incorrectWord = text.Substring(startIndex , endIndex - startIndex);
+                }
+                else
+                {
+                    return spellingErrors;
+                }
+                // Measure the text width
+                NativeMethods.SIZE size;
+                NativeMethods.GetTextExtentPoint32(hdc , incorrectWord , incorrectWord.Length , out size);
+
+                // Get the position of the start of the word
+                IntPtr charPos = NativeMethods.SendMessage(editHandle , NativeMethods.EM_POSFROMCHAR , (IntPtr)startIndex , IntPtr.Zero);
+                int x = ( charPos.ToInt32() & 0xFFFF );
+                int y = ( ( charPos.ToInt32() >> 16 ) & 0xFFFF );
+
+                // Adjust for RTL text
+                x -= size.cx; // Move the starting point to the right edge of the word
+
+                NativeMethods.POINT clientPoint = new NativeMethods.POINT { X = x , Y = y };
+                NativeMethods.ClientToScreen(editHandle , ref clientPoint);
+
+                List<string> suggestions = flaggedToken.suggestions.Select(s => s.text).ToList();
+                Point wpfPoint = ScreenToWpf(new Point(clientPoint.X , clientPoint.Y));
+                spellingErrors.Add((new System.Windows.Point(wpfPoint.X , wpfPoint.Y + 20), size.cx, incorrectWord, suggestions, startIndex, endIndex));
+            }
+
+            NativeMethods.SelectObject(hdc , oldFont);
+            NativeMethods.ReleaseDC(editHandle , hdc);
+            return spellingErrors;
+        }
+
+        private List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> GetTermErrors(
+            IntPtr editHandle ,
+            ApiResponse apiResponse)
+        {
+            string text = _allText.ToString();
+
+            List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> spellingErrors = new List<(System.Windows.Point, double, string, List<string>, int, int)>();
+
+            IntPtr hdc = NativeMethods.GetDC(editHandle);
+            IntPtr hFont = NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETFONT , IntPtr.Zero , IntPtr.Zero);
+            IntPtr oldFont = NativeMethods.SelectObject(hdc , hFont);
+            var termSuggestions = new List<Term>();
+
+            if (apiResponse.termSuggestions is not null && apiResponse.termSuggestions.Any())
+            {
+                // Create a list to store the deserialized terms
+
+                // Loop through each object and cast/deserialize it to a Term object
+                foreach (var suggestion in apiResponse.termSuggestions)
+                {
+                    // Assuming the suggestion is a JSON string or JObject
+                    var term = JsonConvert.DeserializeObject<Term>(suggestion.ToString());
+                    termSuggestions.Add(term);
+                }
+            }
+
+            foreach (var term in termSuggestions)
+            {
+                int startIndex = term.from;
+                int endIndex = term.to - 1;
+                if (termSuggestions is null || !termSuggestions.Any())
+                    return new();
+                string incorrectWord = "";
+                if (startIndex >= 0 && startIndex < text.Length && endIndex <= text.Length && endIndex > startIndex)
+                {
+                    incorrectWord = text.Substring(startIndex , endIndex - startIndex);
+                }
+                else
+                {
+                    return spellingErrors;
+                }
+                // Measure the text width
+                NativeMethods.SIZE size;
+                NativeMethods.GetTextExtentPoint32(hdc , incorrectWord , incorrectWord.Length , out size);
+
+                // Get the position of the start of the word
+                IntPtr charPos = NativeMethods.SendMessage(editHandle , NativeMethods.EM_POSFROMCHAR , (IntPtr)startIndex , IntPtr.Zero);
+                int x = ( charPos.ToInt32() & 0xFFFF );
+                int y = ( ( charPos.ToInt32() >> 16 ) & 0xFFFF );
+
+                // Adjust for RTL text
+                x -= size.cx; // Move the starting point to the right edge of the word
+
+                NativeMethods.POINT clientPoint = new NativeMethods.POINT { X = x , Y = y };
+                NativeMethods.ClientToScreen(editHandle , ref clientPoint);
+
+                List<string> suggestions = new List<string>();
+                suggestions.Add(term.replacement);
+                Point wpfPoint = ScreenToWpf(new Point(clientPoint.X , clientPoint.Y));
+                spellingErrors.Add((new System.Windows.Point(wpfPoint.X , wpfPoint.Y + 20), size.cx, incorrectWord, suggestions, startIndex, endIndex));
+            }
+
+            NativeMethods.SelectObject(hdc , oldFont);
+            NativeMethods.ReleaseDC(editHandle , hdc);
+            return spellingErrors;
+        } 
+        #endregion
+
+        private async Task<ApiResponse> GetSpellCheckResultsAsync(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return null;
+
+            var request = new SpellCheckRequest
+            {
+                text = text.Replace("\n" , "/n") ,
+                docId = _documentId
+            };
+
+            var json = JsonConvert.SerializeObject(request);
+            var content = new StringContent(json , Encoding.UTF8 , "application/json");
+
+            var response = await _httpClient.PostAsync(_apiUrl , content);
+            response.EnsureSuccessStatusCode();
+            var responseString = await response.Content.ReadAsStringAsync();
+            var result = JsonConvert.DeserializeObject<ApiResponse>(responseString);
+            return result;
         }
 
         private void WindowCheckTimer_Tick(object sender , EventArgs e)
         {
-            IntPtr foregroundWindow = GetForegroundWindow();
+            IntPtr foregroundWindow = NativeMethods.GetForegroundWindow();
             if (foregroundWindow != _lastActiveWindowHandle)
             {
                 _lastActiveWindowHandle = foregroundWindow;
                 StringBuilder sb = new StringBuilder(256);
-                GetWindowText(foregroundWindow , sb , 256);
+                NativeMethods.GetWindowText(foregroundWindow , sb , 256);
                 string newWindowTitle = sb.ToString();
 
                 if (newWindowTitle != _lastActiveWindowTitle)
                 {
+                    _floatingPoint.Show();
                     _lastActiveWindowTitle = newWindowTitle;
                     if (IsNotepad(newWindowTitle))
                     {
-                        ReadWindowContent();
+                        _notepadProcessId = GetProcessId(foregroundWindow);
+                        ReadWindowContent(foregroundWindow);
                     }
                 }
+
+                else
+                {
+                    _floatingPoint.Hide();
+                }
+
+                UpdateOverlayPosition();
+                CheckForIncorrectWords();
+
+                // Update the current screen
+                _currentScreen = Screen.FromHandle(foregroundWindow);
+            }
+        }
+
+        private void UpdateOverlayPosition()
+        {
+            NativeMethods.RECT rect;
+            if (NativeMethods.GetWindowRect(_lastActiveWindowHandle , out rect))
+            {
+                // Convert screen coordinates to DPI-aware WPF coordinates
+                System.Windows.Point topLeft = ScreenToWpf(new System.Windows.Point(rect.Left , rect.Top));
+                System.Windows.Point bottomRight = ScreenToWpf(new System.Windows.Point(rect.Right , rect.Bottom));
+
+                _overlay.Left = topLeft.X;
+                _overlay.Top = topLeft.Y;
+                _overlay.Width = bottomRight.X - topLeft.X;
+                _overlay.Height = bottomRight.Y - topLeft.Y;
+            }
+        }
+
+        private System.Windows.Point ScreenToWpf(System.Windows.Point screenPoint)
+        {
+            PresentationSource source = PresentationSource.FromVisual(this);
+            if (source == null) return screenPoint;
+
+            return source.CompositionTarget.TransformFromDevice.Transform(screenPoint);
+        }
+
+
+        private void ProcessCheckTimer_Tick(object sender , EventArgs e)
+        {
+            if (_notepadProcessId.HasValue)
+            {
+                var process = Process.GetProcesses().FirstOrDefault(p => p.Id == _notepadProcessId.Value);
+                if (process == null)
+                {
+                    _allText.Clear();
+                    _notepadProcessId = null;
+                }
+            }
+        }
+
+        private int? GetProcessId(IntPtr windowHandle)
+        {
+            try
+            {
+                Process process = Process.GetProcesses().FirstOrDefault(p => p.MainWindowHandle == windowHandle);
+                return process?.Id;
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show($"Error retrieving process ID: {ex.Message}");
+                return null;
             }
         }
 
         private bool IsNotepad(string windowTitle)
         {
-            return windowTitle.EndsWith(".txt - Notepad") || windowTitle.Equals("Untitled - Notepad") || windowTitle.EndsWith("Notepad");
+            return windowTitle.EndsWith(".txt - Notepad") ||
+                   windowTitle.Equals("Untitled - Notepad") ||
+                   windowTitle.EndsWith("Notepad");
         }
 
-        private void ReadWindowContent()
+        private void ReadWindowContent(IntPtr notepadHandle)
         {
             try
             {
-                // Save current clipboard content
-                string oldClipboardContent = Clipboard.GetText();
-
-                // Select all text and copy to clipboard
-                SendKeys(Keys.ControlKey , Keys.A);
-                Thread.Sleep(100);
-                SendKeys(Keys.ControlKey , Keys.C);
-                Thread.Sleep(100);
-
-                // Read from clipboard
-                string content = Clipboard.GetText();
-
-                // Restore old clipboard content
-                Clipboard.SetText(oldClipboardContent);
-
-                _allText.Clear();
-                _allText.Append(content);
-                _currentWord.Clear();
-
-                Dispatcher.Invoke(() =>
+                IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
+                if (editHandle != IntPtr.Zero)
                 {
-                    HighlightTeh();
-                });
+                    int length = (int)NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETTEXTLENGTH , IntPtr.Zero , null);
+                    if (length > 0)
+                    {
+                        StringBuilder sb = new StringBuilder(length + 1);
+                        NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETTEXT , (IntPtr)sb.Capacity , sb);
 
-                // Log or display the read content (for debugging purposes)
-                Console.WriteLine("Read content from Notepad: " + content);
+                        _allText.Clear();
+                        _allText.Append(sb.ToString());
+                        _currentWord.Clear();
+
+                        Dispatcher.Invoke(() =>
+                        {
+                            CheckForIncorrectWords();
+                        });
+
+                        Console.WriteLine("Read content from Notepad: " + _allText.ToString());
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Failed to find the edit control.");
+                }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error reading Notepad content: {ex.Message}");
+                System.Windows.MessageBox.Show($"Error reading Notepad content: {ex.Message}");
             }
-        }
-
-        private void SendKeys(Keys modifierKey , Keys key)
-        {
-            keybd_event((byte)modifierKey , 0 , 0 , UIntPtr.Zero);
-            keybd_event((byte)key , 0 , 0 , UIntPtr.Zero);
-            keybd_event((byte)key , 0 , KEYEVENTF_KEYUP , UIntPtr.Zero);
-            keybd_event((byte)modifierKey , 0 , KEYEVENTF_KEYUP , UIntPtr.Zero);
         }
 
         private void OnKeyPressed(object sender , Keys e)
         {
-            _lastActiveWindowHandle = GetForegroundWindow();
+            _lastActiveWindowHandle = NativeMethods.GetForegroundWindow();
 
             char keyChar = GetCharFromKey(e);
 
@@ -156,7 +610,6 @@ namespace KeyboardTrackingApp
             }
             else if (e == Keys.Space || e == Keys.OemPeriod)
             {
-                CheckWord();
                 _currentWord.Clear();
                 _allText.Append((char)e);
             }
@@ -168,19 +621,19 @@ namespace KeyboardTrackingApp
 
             Dispatcher.Invoke(() =>
             {
-                HighlightTeh();
+                CheckForIncorrectWords();
             });
         }
 
         private char GetCharFromKey(Keys key)
         {
             byte[] keyboardState = new byte[256];
-            GetKeyboardState(keyboardState);
+            NativeMethods.GetKeyboardState(keyboardState);
 
-            uint scanCode = MapVirtualKey((uint)key , 0);
+            uint scanCode = NativeMethods.MapVirtualKey((uint)key , 0);
             StringBuilder stringBuilder = new StringBuilder(2);
 
-            int result = ToUnicode((uint)key , scanCode , keyboardState , stringBuilder , stringBuilder.Capacity , 0);
+            int result = NativeMethods.ToUnicode((uint)key , scanCode , keyboardState , stringBuilder , stringBuilder.Capacity , 0);
             if (result > 0)
             {
                 return stringBuilder[0];
@@ -191,148 +644,79 @@ namespace KeyboardTrackingApp
             }
         }
 
-        private void CheckWord()
+        private void UpdateTextAndClosePopup(string word)
         {
-            string word = _currentWord.ToString();
-            if (word.Equals("teh" , StringComparison.OrdinalIgnoreCase))
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    SuggestionsControl.SetSuggestions(new[] { "the" , "thee" });
-                    SuggestionsPopup.IsOpen = true;
-                });
-            }
-            else
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    SuggestionsControl.SetSuggestions(null);
-                    SuggestionsPopup.IsOpen = false;
-                });
-            }
-        }
-
-        private void OnSuggestionSelected(object sender , string suggestion)
-        {
-            string currentText = _allText.ToString();
-            string currentWord = _currentWord.ToString();
-
-            currentText = currentText.Replace("teh" , suggestion);
-            _allText.Clear();
-            _allText.Append(currentText);
-
-            ReplaceWordInActiveApplication(suggestion);
-
             _currentWord.Clear();
 
             Dispatcher.Invoke(() =>
             {
-                HighlightTeh();
-                SuggestionsControl.SetSuggestions(null);
+                CheckForIncorrectWords();
+                _suggestionsControl.SetSuggestion(null);
                 SuggestionsPopup.IsOpen = false;
             });
         }
 
-        private void HighlightTeh()
+        private void UpdateErrorCount(int errorCount)
         {
-            string fullText = _allText.ToString();
-            CurrentWordTextBlock.Inlines.Clear();
+            _floatingPoint.UpdateErrorCount(errorCount);
+        }
 
-            string[] parts = fullText.Split(new[] { "teh" } , StringSplitOptions.None);
+        private void SendKeys(Keys key)
+        {
+            NativeMethods.keybd_event((byte)key , 0 , 0 , UIntPtr.Zero);
+            NativeMethods.keybd_event((byte)key , 0 , NativeMethods.KEYEVENTF_KEYUP , UIntPtr.Zero);
+        }
 
-            for (int i = 0 ; i < parts.Length ; i++)
+        private void ContentSyncTimer_Tick(object sender , EventArgs e)
+        {
+            if (_notepadProcessId.HasValue)
             {
-                CurrentWordTextBlock.Inlines.Add(new Run(parts[i]));
-
-                if (i < parts.Length - 1)
+                string notepadContent = GetNotepadContent();
+                if (notepadContent != _allText.ToString())
                 {
-                    var incorrectWord = new Run("teh") { Background = Brushes.Red , Foreground = Brushes.White };
-                    CurrentWordTextBlock.Inlines.Add(incorrectWord);
-
-                    var arrow = new Run(" => ");
-                    CurrentWordTextBlock.Inlines.Add(arrow);
-
-                    var correctWord = new Run("the") { Foreground = Brushes.Green };
-                    CurrentWordTextBlock.Inlines.Add(correctWord);
-
-                    var acceptButton = new Button { Content = "Accept" , Margin = new Thickness(5) };
-                    acceptButton.Click += (s , e) => OnSuggestionSelected(this , "the");
-                    CurrentWordTextBlock.Inlines.Add(acceptButton);
-
-                    var rejectButton = new Button { Content = "Reject" , Margin = new Thickness(5) };
-                    rejectButton.Click += (s , e) => SuggestionsPopup.IsOpen = false;
-                    CurrentWordTextBlock.Inlines.Add(rejectButton);
+                    _allText.Clear();
+                    _allText.Append(notepadContent);
+                    _currentWord.Clear();
+                    Dispatcher.Invoke(() =>
+                    {
+                        CheckForIncorrectWords();
+                    });
                 }
             }
         }
 
-        private void ReplaceWordInActiveApplication(string replacement)
+        private string GetNotepadContent()
         {
-            if (_lastActiveWindowHandle != IntPtr.Zero)
+            IntPtr notepadHandle = NativeMethods.GetForegroundWindow();
+            IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
+            if (editHandle != IntPtr.Zero)
             {
-                uint currentThreadId = GetCurrentThreadId();
-                uint foregroundThreadId = GetWindowThreadProcessId(_lastActiveWindowHandle , IntPtr.Zero);
-
-                AttachThreadInput(currentThreadId , foregroundThreadId , true);
-                SetForegroundWindow(_lastActiveWindowHandle);
-                AttachThreadInput(currentThreadId , foregroundThreadId , false);
-
-                keybd_event((byte)Keys.ControlKey , 0 , 0 , UIntPtr.Zero);
-                keybd_event((byte)Keys.A , 0 , 0 , UIntPtr.Zero);
-                keybd_event((byte)Keys.A , 0 , KEYEVENTF_KEYUP , UIntPtr.Zero);
-                keybd_event((byte)Keys.ControlKey , 0 , KEYEVENTF_KEYUP , UIntPtr.Zero);
-
-                keybd_event((byte)Keys.Delete , 0 , 0 , UIntPtr.Zero);
-                keybd_event((byte)Keys.Delete , 0 , KEYEVENTF_KEYUP , UIntPtr.Zero);
-                Thread.Sleep(10);
-
-                foreach (char c in replacement)
+                int length = (int)NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETTEXTLENGTH , IntPtr.Zero , null);
+                if (length > 0)
                 {
-                    byte vk = ToVirtualKey(c);
-                    keybd_event(vk , 0 , 0 , UIntPtr.Zero);
-                    keybd_event(vk , 0 , KEYEVENTF_KEYUP , UIntPtr.Zero);
+                    StringBuilder sb = new StringBuilder(length + 1);
+                    NativeMethods.SendMessage(editHandle , NativeMethods.WM_GETTEXT , (IntPtr)sb.Capacity , sb);
+                    return sb.ToString();
                 }
+            }
+            return string.Empty;
+        }
+        private void CheckKeyboardLayout()
+        {
+            IntPtr layout = NativeMethods.GetKeyboardLayout(0); // 0 means to get the layout of the current thread.
+            int languageCode = layout.ToInt32() & 0xFFFF; // The low word contains the language identifier.
+            if (languageCode == 0x0C01) // 0x0C01 is the hexadecimal code for Arabic (Saudi Arabia).
+            {
+                Console.WriteLine("Arabic keyboard layout is active.");
             }
         }
 
-        private byte ToVirtualKey(char c)
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
-            return (byte)MapVirtualKey((uint)char.ToUpper(c) , 2);
-        }
-
-        protected override void OnClosed(EventArgs e)
-        {
+            base.OnClosing(e);
+            _floatingPoint.Close();
+            _overlay.Close();
             _keyboardHook.Dispose();
-            base.OnClosed(e);
-        }
-    }
-
-    public class SuggestionsControl : StackPanel
-    {
-        public event EventHandler<string> SuggestionSelected;
-
-        public void SetSuggestions(IEnumerable<string> suggestions)
-        {
-            Children.Clear();
-            if (suggestions != null)
-            {
-                foreach (var suggestion in suggestions)
-                {
-                    var textBlock = new TextBlock
-                    {
-                        Text = suggestion ,
-                        Padding = new Thickness(5) ,
-                        Background = Brushes.LightGray
-                    };
-                    textBlock.MouseEnter += (s , e) =>
-                    {
-                        textBlock.Background = Brushes.Gray;
-                        SuggestionSelected?.Invoke(this , suggestion);
-                    };
-                    textBlock.MouseLeave += (s , e) => textBlock.Background = Brushes.LightGray;
-                    Children.Add(textBlock);
-                }
-            }
         }
     }
 }
