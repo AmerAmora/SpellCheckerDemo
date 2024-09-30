@@ -13,6 +13,7 @@ namespace SpellCheckerDemo
         private bool isUserDragging = false;
         private static bool isAuthenticated = false;
         private const string LoginUrl = "https://qalam.ai/auth/sign-in";
+        private DateTime lastClickTime;
 
         public FloatingPointWindow()
         {
@@ -47,7 +48,7 @@ namespace SpellCheckerDemo
             }
             else
             {
-                ToggleMainWindowVisibility();
+                //ToggleMainWindowVisibility();
             }
         }
 
@@ -139,12 +140,25 @@ namespace SpellCheckerDemo
 
         private void ErrorCountGrid_MouseLeftButtonDown(object sender , MouseButtonEventArgs e)
         {
-            ErrorCountGrid.Visibility = Visibility.Collapsed;
-            LogoImage.Visibility = Visibility.Collapsed;
+            if (e.LeftButton == MouseButtonState.Pressed)
+            {
+                var currentTime = DateTime.Now;
 
-            FixAllGrid.Visibility = Visibility.Visible;
-            MainWindow.Width = 290;
-            MainWindow.Height = 150;
+                // Check if the time since the last click is less than the double-click threshold
+                if (( currentTime - lastClickTime ).TotalMilliseconds <= System.Windows.Forms.SystemInformation.DoubleClickTime)
+                {
+                    // Handle the double-click action here
+                    ErrorCountGrid.Visibility = Visibility.Collapsed;
+                    LogoImage.Visibility = Visibility.Collapsed;
+
+                    FixAllGrid.Visibility = Visibility.Visible;
+                    MainWindow.Width = 290;
+                    MainWindow.Height = 150;
+                }
+
+                // Update the last click time
+                lastClickTime = currentTime;
+            }
         }
 
         private void FixAllErrorsButton_Click(object sender , RoutedEventArgs e)
