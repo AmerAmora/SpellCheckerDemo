@@ -97,11 +97,15 @@ namespace SpellCheckerDemo
                     LogoImage.Visibility = Visibility.Collapsed;
                     ErrorCountGrid.Visibility = Visibility.Visible;
                     ErrorCountText.Text = errorCount.ToString();
+                    AllErrorsCount.Text = $"عدد الاخطاء المكتشفة في النص : {errorCount} اخطاء";
                 }
                 else
                 {
-                    // Show the original logo
-                    LogoImage.Visibility = Visibility.Visible;
+                    if (FixAllGrid.Visibility == Visibility.Visible)
+                        LogoImage.Visibility = Visibility.Collapsed;
+                    else 
+                        LogoImage.Visibility = Visibility.Visible;
+
                     ErrorCountGrid.Visibility = Visibility.Collapsed;
                 }
             });
@@ -136,8 +140,11 @@ namespace SpellCheckerDemo
         private void ErrorCountGrid_MouseLeftButtonDown(object sender , MouseButtonEventArgs e)
         {
             ErrorCountGrid.Visibility = Visibility.Collapsed;
-            FixAllErrorsButton.Visibility = Visibility.Visible;
-            MainWindow.Width = 150;
+            LogoImage.Visibility = Visibility.Collapsed;
+
+            FixAllGrid.Visibility = Visibility.Visible;
+            MainWindow.Width = 290;
+            MainWindow.Height = 150;
         }
 
         private void FixAllErrorsButton_Click(object sender , RoutedEventArgs e)
@@ -146,9 +153,16 @@ namespace SpellCheckerDemo
             ( (MainWindow)Application.Current.MainWindow ).ApplyAllSuggestions();
 
             // Hide the button and show the error count grid again
-            FixAllErrorsButton.Visibility = Visibility.Collapsed;
+            FixAllGrid.Visibility = Visibility.Collapsed;
             ErrorCountGrid.Visibility = Visibility.Visible;
             MainWindow.Width = 70;
+            MainWindow.Height = 70;
+        }
+
+        private void CloseButton_Click(object sender , RoutedEventArgs e)
+        {
+            FixAllGrid.Visibility = Visibility.Collapsed;
+            ErrorCountGrid.Visibility = Visibility.Visible;
         }
     }
 }

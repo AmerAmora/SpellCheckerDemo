@@ -32,19 +32,94 @@
         </Grid>
 
         <!-- Fix All Errors Button -->
-    <Button 
-        x:Name="FixAllErrorsButton" 
-        Content="تصليح جميع الاخطاء" 
-        Visibility="Collapsed" 
-        HorizontalAlignment="Center" 
-        VerticalAlignment="Center" 
-        Click="FixAllErrorsButton_Click" 
-        Background="#008677" 
-        Foreground="#f8fcfb" 
-        FontFamily="Arial"
-        Padding="10,5"
-        FontSize="14"
-    />
-    
+        <Grid x:Name="FixAllGrid" Visibility="Collapsed">
+            <!-- Limit the Border to just this Grid -->
+            <Border BorderBrush="#f7f9fe" BorderThickness="2" CornerRadius="5" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Border.Effect>
+                    <DropShadowEffect Color="#f7f9fe" ShadowDepth="10" Opacity="0.7"/>
+                </Border.Effect>
+                <Grid Height="150" Width="290">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition/>
+                        <RowDefinition/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Top Bar with Close Button -->
+                    <Grid 
+                Grid.Row="0" 
+                Background="#f7f9fe" 
+                Height="30">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <!-- Takes available space -->
+                            <ColumnDefinition Width="Auto" />
+                            <!-- Width of the button -->
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Empty element to take space -->
+                        <TextBlock Text="" Grid.Column="0"/>
+
+                        <Button 
+                        Content="x" 
+                        Width="20" 
+                        Height="20" 
+                        FontSize="12" 
+                        Background="Transparent" 
+                        Foreground="#c4c6ca" 
+                        BorderThickness="0"
+                        VerticalAlignment="Center"
+                        Margin="0,0,5,0"
+                        Cursor="Hand"
+                        Click="CloseButton_Click" 
+                        Grid.Column="1"/>
+                    </Grid>
+                    <!-- Text Block -->
+                    <TextBlock 
+                    Name="AllErrorsCount"
+                    Text= "عدد الاخطاء المكتشفة في النص : 4 اخطاء" 
+                    HorizontalAlignment="Center" 
+                    VerticalAlignment="Center" 
+                    Grid.Row="1" 
+                    FontFamily="pack://application:,,,/WpfApp1;component/Assets/Tajawal-Regular.ttf#Tajawal" 
+                    FontSize="12" 
+                    Foreground="#b9c3d1"/>
+
+                    <!-- Button -->
+                    <Button 
+                    x:Name="FixAllErrorsButton" 
+                    Content="تصليح جميع الاخطاء" 
+                    Click="FixAllErrorsButton_Click"
+                    Visibility="Visible" 
+                    HorizontalAlignment="Center" 
+                    VerticalAlignment="Center"  
+                    Background="#008677" 
+                    Foreground="#f8fcfb" 
+                    FontFamily="pack://application:,,,/WpfApp1;component/Assets/Tajawal-Regular.ttf#Tajawal"
+                    FontSize="12"
+                    Grid.Row="2"
+                    Width="150"
+                    Height="35"
+                    Padding="0"
+                    BorderThickness="1"
+                    BorderBrush="White">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <Border 
+                                Background="{TemplateBinding Background}" 
+                                CornerRadius="8" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                                    <ContentPresenter 
+                                    HorizontalAlignment="Center" 
+                                    VerticalAlignment="Center"/>
+                                </Border>
+                            </ControlTemplate>
+                        </Button.Template>
+                    </Button>
+                </Grid>
+            </Border>
+        </Grid>
+
     </Grid>
 </Window>
