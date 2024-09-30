@@ -9,6 +9,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Assets\Fonts\Tajawal-Black.ttf" />
+    <None Remove="Assets\Fonts\Tajawal-Bold.ttf" />
+    <None Remove="Assets\Fonts\Tajawal-ExtraBold.ttf" />
+    <None Remove="Assets\Fonts\Tajawal-ExtraLight.ttf" />
+    <None Remove="Assets\Fonts\Tajawal-Light.ttf" />
+    <None Remove="Assets\Fonts\Tajawal-Medium.ttf" />
+    <None Remove="Assets\Fonts\Tajawal-Regular.ttf" />
     <None Remove="Logo.png" />
   </ItemGroup>
 
@@ -18,6 +25,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Resource Include="Assets\Fonts\Tajawal-Black.ttf" />
+    <Resource Include="Assets\Fonts\Tajawal-Bold.ttf" />
+    <Resource Include="Assets\Fonts\Tajawal-ExtraBold.ttf" />
+    <Resource Include="Assets\Fonts\Tajawal-ExtraLight.ttf" />
+    <Resource Include="Assets\Fonts\Tajawal-Light.ttf" />
+    <Resource Include="Assets\Fonts\Tajawal-Medium.ttf" />
+    <Resource Include="Assets\Fonts\Tajawal-Regular.ttf" />
     <Resource Include="Logo.png" />
   </ItemGroup>
 

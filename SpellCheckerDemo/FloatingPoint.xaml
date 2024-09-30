@@ -81,7 +81,7 @@
                     HorizontalAlignment="Center" 
                     VerticalAlignment="Center" 
                     Grid.Row="1" 
-                    FontFamily="pack://application:,,,/WpfApp1;component/Assets/Tajawal-Regular.ttf#Tajawal" 
+                    FontFamily="pack://application:,,,/SpellCheckerDemo;component/Assets/Fonts/Tajawal-Regular.ttf#Tajawal" 
                     FontSize="12" 
                     Foreground="#b9c3d1"/>
 
