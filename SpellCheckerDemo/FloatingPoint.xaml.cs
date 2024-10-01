@@ -1,7 +1,13 @@
 ﻿using KeyboardTrackingApp;
+using Newtonsoft.Json;
+using SpellCheckerDemo.Models;
 using System;
 using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Text.Json.Serialization;
+using System.Web;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -12,8 +18,12 @@ namespace SpellCheckerDemo
     {
         private bool isUserDragging = false;
         private static bool isAuthenticated = false;
-        private const string LoginUrl = "https://qalam.ai/auth/sign-in";
+        //private const string LoginUrl = "https://qalam.ai/auth/sign-in";
+        private const string LoginUrl = "https://localhost:7025/Home/Login";
         private DateTime lastClickTime;
+        private const string RedirectUrl = "http://localhost";
+        private HttpListener listener;
+        private int port;
 
         public FloatingPointWindow()
         {
@@ -35,6 +45,60 @@ namespace SpellCheckerDemo
             ErrorCountGrid.MouseLeftButtonDown += ErrorCountGrid_MouseLeftButtonDown;
 
             SetupCaretTracking();
+            InitializeListener();
+        }
+
+        private void InitializeListener()
+        {
+            listener = new HttpListener();
+            port = FindAvailablePort();
+            listener.Prefixes.Add($"{RedirectUrl}:{port}/");
+        }
+
+        private int FindAvailablePort()
+        {
+            TcpListener l = new TcpListener(IPAddress.Loopback , 0);
+            l.Start();
+            int port = ( (IPEndPoint)l.LocalEndpoint ).Port;
+            l.Stop();
+            return port;
+        }
+
+        private async void ListenForCallback()
+        {
+            listener.Start();
+            HttpListenerContext context = await listener.GetContextAsync();
+            HttpListenerRequest request = context.Request;
+
+            // Extract token information
+            var query = HttpUtility.ParseQueryString(request.Url.Query);
+            string data = query["data"];
+            var apiResult = JsonConvert.DeserializeObject<AuthResponse>(data);
+            var accessToken = apiResult.token;
+
+            // Send a response to close the browser tab
+            string responseData = "Login successful! You can close this tab and return to the application.";
+            byte[] buffer = System.Text.Encoding.UTF8.GetBytes(responseData);
+            HttpListenerResponse response = context.Response;
+            response.ContentLength64 = buffer.Length;
+            System.IO.Stream output = response.OutputStream;
+            await output.WriteAsync(buffer , 0 , buffer.Length);
+            output.Close();
+            listener.Stop();
+
+            // Handle successful login in your WPF application
+            await Dispatcher.InvokeAsync(() =>
+            {
+                SecureTokenStorage.StoreToken(accessToken);
+
+                // Update the bearer token in MainWindow
+                if (Application.Current.MainWindow is MainWindow mainWindow)
+                {
+                    mainWindow.UpdateBearerToken(accessToken);
+                }
+                MessageBox.Show($"Login successful!");
+                isAuthenticated = true;
+            });
         }
 
         private void HandleDoubleClick(object sender , MouseButtonEventArgs e)
@@ -56,7 +120,10 @@ namespace SpellCheckerDemo
         {
             try
             {
-                Process.Start(new ProcessStartInfo(LoginUrl) { UseShellExecute = true });
+                string fullLoginUrl = $"{LoginUrl}?redirect_uri={RedirectUrl}:{port}/";
+                Process.Start(new ProcessStartInfo(fullLoginUrl) { UseShellExecute = true });
+
+                ListenForCallback();
             }
             catch (Exception ex)
             {

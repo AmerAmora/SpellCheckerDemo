@@ -30,7 +30,7 @@ namespace KeyboardTrackingApp
         private OverlayWindow _overlay;
         private readonly HttpClient _httpClient;
         private readonly string _apiUrl = "https://api-stg.qalam.ai/test/go";
-        private readonly string _bearerToken = "eyJraWQiOiJCSHhSWWpqenV6N1JpKzM4dVlCWkJcLzYwR3FIcVhqQjI2bHAxOVd6dTIwaz0iLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJiY2RjNmEwMi0wYzEyLTQzNjItYjcxZS04MjY4MzkyYTI5YWUiLCJjb2duaXRvOmdyb3VwcyI6WyJhZG1pbiJdLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiY3VzdG9tOnV0bV9zcmMiOiJOQSIsImlzcyI6Imh0dHBzOlwvXC9jb2duaXRvLWlkcC5ldS13ZXN0LTEuYW1hem9uYXdzLmNvbVwvZXUtd2VzdC0xX2xNc0lHNmQ3ZyIsImNvZ25pdG86dXNlcm5hbWUiOiJiY2RjNmEwMi0wYzEyLTQzNjItYjcxZS04MjY4MzkyYTI5YWUiLCJwcmVmZXJyZWRfdXNlcm5hbWUiOiJhOTBmZGQwOC01MWE3LTRmY2MtOWI5NC02MzIxZTI5Y2FiZjYiLCJnaXZlbl9uYW1lIjoiV29yZC1QYWNrYWdlIiwiYXVkIjoiNTlxbTFsNGdqaWdzNzZvNWo5Mm5wNDYwanQiLCJldmVudF9pZCI6ImFlMWY5NTRiLTQ4MWMtNGJmZi1hN2IzLWM0NmJlMWNkYWYyOSIsInRva2VuX3VzZSI6ImlkIiwiYXV0aF90aW1lIjoxNzI3Njk2ODc4LCJleHAiOjE3Mjc3MDA0NzgsImlhdCI6MTcyNzY5Njg3OCwiZmFtaWx5X25hbWUiOiJVc2VyIiwiZW1haWwiOiJ3aXJlamVmOTAwQGhld2Vlay5jb20ifQ.d1dCN-87zFv5DLcxIW1T9677c9Epf-6Me-7sAfFSw_qYvw2-T0MSHYdfI0MVarQGKtzmYsYtqI62vkU9gtDd5IgA4uc8_NpyayBtR9xOxp94tmxe1-679FnyEJbrT1babk2cPMo9upqcZT52nieOrR_ozBytmkJhj9qZJH4nzVh0I69pCAdSPbkkfnsrc4DcUxjAEOvKudKhDy8V3mccLfkpO4zY6gA2wpe3pw1qisc_-mkYbr1NQTm-t9cHSPw0t-H_TBUN8ox4fFpKJmT1gltG8Hfp3B9B2LqqMbXe-mb0Z0mWuJnRPz9AfBT_9RlfS5nx0r6GXGGYh_ybixepPA";
+        private string _bearerToken = "";
         private string _documentId;
         private Screen _currentScreen;
 
@@ -79,6 +79,17 @@ namespace KeyboardTrackingApp
             _documentId = Guid.NewGuid().ToString(); // Generate a unique document ID
         }
 
+        public void UpdateBearerToken(string newToken)
+        {
+            _bearerToken = newToken;
+            // Optionally, you can reinitialize the HttpClient with the new token
+            InitializeHttpClient();
+        }
+
+        private void InitializeHttpClient()
+        {
+            _httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer" , _bearerToken);
+        }
         private void Overlay_SuggestionAccepted(object sender , (string suggestion, int startIndex, int endIndex) e)
         {
             ReplaceWord(e.suggestion , e.startIndex , e.endIndex);
@@ -498,7 +509,8 @@ namespace KeyboardTrackingApp
         {
             if (string.IsNullOrEmpty(text))
                 return null;
-
+            if (string.IsNullOrEmpty(_bearerToken))
+                return null;
             var request = new SpellCheckRequest
             {
                 text = text.Replace("\n" , "/n") ,
