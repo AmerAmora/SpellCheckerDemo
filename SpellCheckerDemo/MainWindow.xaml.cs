@@ -33,6 +33,7 @@ namespace KeyboardTrackingApp
         private string _bearerToken = "";
         private string _documentId;
         private Screen _currentScreen;
+        private AuthenticationService _authService;
 
         public MainWindow()
         {
@@ -64,8 +65,9 @@ namespace KeyboardTrackingApp
             };
             _contentSyncTimer.Tick += ContentSyncTimer_Tick;
             _contentSyncTimer.Start();
+            _authService = new AuthenticationService();
 
-            _floatingPoint = new FloatingPointWindow();
+            _floatingPoint = new FloatingPointWindow(_authService);
             _floatingPoint.Hide();
 
             _overlay = new OverlayWindow();
@@ -207,7 +209,8 @@ namespace KeyboardTrackingApp
         {
             string text = _allText.ToString();
             var apiResponse = await GetSpellCheckResultsAsync(text);
-
+            if (apiResponse is null)
+                return;
             if (apiResponse?.spellCheckResponse?.results?.flagged_tokens == null)
             {
                 UpdateErrorCount(0);
@@ -507,9 +510,7 @@ namespace KeyboardTrackingApp
 
         private async Task<ApiResponse> GetSpellCheckResultsAsync(string text)
         {
-            if (string.IsNullOrEmpty(text))
-                return null;
-            if (string.IsNullOrEmpty(_bearerToken))
+            if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(_bearerToken) || !_authService.IsAuthenticated)
                 return null;
             var request = new SpellCheckRequest
             {
@@ -521,6 +522,11 @@ namespace KeyboardTrackingApp
             var content = new StringContent(json , Encoding.UTF8 , "application/json");
 
             var response = await _httpClient.PostAsync(_apiUrl , content);
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                _authService.LogOut();
+                return null;
+            }
             response.EnsureSuccessStatusCode();
             var responseString = await response.Content.ReadAsStringAsync();
             var result = JsonConvert.DeserializeObject<ApiResponse>(responseString);
