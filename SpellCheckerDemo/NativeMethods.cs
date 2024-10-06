@@ -83,6 +83,15 @@ public static class NativeMethods
 
     [DllImport("user32.dll")]
     public static extern bool UnhookWinEvent(IntPtr hWinEventHook);
+    [DllImport("user32.dll")]
+    public static extern bool GetCursorPos(out POINT lpPoint);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr WindowFromPoint(POINT Point);
+
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hWnd , IntPtr ProcessId);
+
     public delegate bool EnumWindowsProc(IntPtr hWnd , IntPtr lParam);
     public const int EM_POSFROMCHAR = 0xD6;
     public const uint WM_GETTEXT = 0x000D;

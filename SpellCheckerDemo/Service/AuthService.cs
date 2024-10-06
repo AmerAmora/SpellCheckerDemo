@@ -11,7 +11,7 @@ using KeyboardTrackingApp;
 
 public class AuthenticationService
 {
-    public bool IsAuthenticated { get; private set; } = false;
+    public bool IsAuthenticated { get; set; } = false;
 
     public string Token { get; private set; }
 
