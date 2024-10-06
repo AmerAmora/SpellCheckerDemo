@@ -76,8 +76,6 @@ namespace KeyboardTrackingApp
 
             this.Hide();
             _httpClient = new HttpClient();
-            _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*"));
-            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer" , _bearerToken);
             _documentId = Guid.NewGuid().ToString(); // Generate a unique document ID
         }
 
@@ -510,7 +508,8 @@ namespace KeyboardTrackingApp
 
         private async Task<ApiResponse> GetSpellCheckResultsAsync(string text)
         {
-            if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(_bearerToken) || !_authService.IsAuthenticated)
+            _bearerToken = SecureTokenStorage.RetrieveToken();
+            if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(_bearerToken))
                 return null;
             var request = new SpellCheckRequest
             {
@@ -520,7 +519,8 @@ namespace KeyboardTrackingApp
 
             var json = JsonConvert.SerializeObject(request);
             var content = new StringContent(json , Encoding.UTF8 , "application/json");
-
+            _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("*/*"));
+            _httpClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer" , _bearerToken);
             var response = await _httpClient.PostAsync(_apiUrl , content);
             if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
