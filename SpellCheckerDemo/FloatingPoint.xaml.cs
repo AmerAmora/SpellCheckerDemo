@@ -48,7 +48,7 @@ namespace SpellCheckerDemo
         {
             isUserDragging = false;
             var currentToken = SecureTokenStorage.RetrieveToken();
-            if (string.IsNullOrEmpty(currentToken)) 
+            if (!string.IsNullOrEmpty(currentToken)) 
                 _authenticationService.IsAuthenticated=true;
             
             if (!_authenticationService.IsAuthenticated)

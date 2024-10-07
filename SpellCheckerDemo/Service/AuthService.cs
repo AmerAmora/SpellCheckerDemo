@@ -15,7 +15,7 @@ public class AuthenticationService
 
     public string Token { get; private set; }
 
-    private const string LoginUrl = "https://localhost:7025/Home/Login";
+    private const string LoginUrl = "https://localhost:7261/Home/Index";
     //private const string LoginUrl = "https://qalam.ai/auth/sign-in";
     private const string RedirectUrl = "http://localhost";
     private HttpListener listener;
