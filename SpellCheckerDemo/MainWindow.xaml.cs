@@ -9,8 +9,11 @@ using System.Net.Http.Headers;
 using Newtonsoft.Json;
 using SpellCheckerDemo.Models;
 using System.Windows.Forms;
-using MessageBox = System.Windows.MessageBox;
 using static System.Net.Mime.MediaTypeNames;
+using System.Reflection.Metadata;
+using System.Runtime.InteropServices;
+using Application = Microsoft.Office.Interop.Word.Application;
+using Document = Microsoft.Office.Interop.Word.Document;
 
 namespace KeyboardTrackingApp
 {
@@ -34,6 +37,7 @@ namespace KeyboardTrackingApp
         private string _documentId;
         private Screen _currentScreen;
         private AuthenticationService _authService;
+        private int? _microsoftWordProcessId;
 
         public MainWindow()
         {
@@ -98,92 +102,190 @@ namespace KeyboardTrackingApp
 
         public async void ApplyAllSuggestions()
         {
-            IntPtr notepadHandle = FindNotepadWindow();
-            if (notepadHandle == IntPtr.Zero)
-            {
-                System.Windows.MessageBox.Show("Failed to find Notepad window.");
-                return;
-            }
-
-            IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
-            if (editHandle == IntPtr.Zero)
-            {
-                System.Windows.MessageBox.Show("Failed to find Edit control in Notepad.");
-                return;
-            }
-            string text = GetNotepadContent(notepadHandle);
-            var apiResponse = await GetSpellCheckResultsAsync(text);
-
+            string text;
             ErrorsUnderlines errors = new ErrorsUnderlines();
 
-            if (editHandle != IntPtr.Zero)
+            if (_microsoftWordProcessId.HasValue)
             {
-                errors.SpellingErrors = GetSpellingErrors(editHandle , apiResponse, text);
-                errors.GrammarError = GetGrammarErrors(editHandle , apiResponse, text);
-                errors.PhrasingErrors = GetPhrasingErrors(editHandle , apiResponse, text);
-                errors.TafqitErrors = GetTafqitErrors(editHandle , apiResponse, text);
-                errors.TermErrors = GetTermErrors(editHandle , apiResponse, text);
+                try
+                {
+                    Application wordApp = (Application)SpellCheckerDemo.ReplaceMarshall.GetActiveObject("Word.Application");
+                    if (wordApp?.ActiveDocument == null)
+                    {
+                        System.Windows.MessageBox.Show("Failed to find Word document.");
+                        return;
+                    }
+
+                    text = GetMicrosoftWordContent();
+                    if (string.IsNullOrEmpty(text))
+                    {
+                        return;
+                    }
+
+                    var apiResponse = await GetSpellCheckResultsAsync(text);
+                    if (apiResponse == null)
+                    {
+                        return;
+                    }
+
+                    // Get the Word window handle
+                    IntPtr wordHandle = new IntPtr(wordApp.ActiveWindow.Hwnd);
+
+                    errors.SpellingErrors = GetWordSpellingErrors(wordHandle , apiResponse , text);
+                    //errors.GrammarError = GetWordGrammarErrors(wordHandle, apiResponse, text);
+                    //errors.PhrasingErrors = GetWordPhrasingErrors(wordHandle, apiResponse, text);
+                    //errors.TafqitErrors = GetWordTafqitErrors(wordHandle, apiResponse, text);
+                    //errors.TermErrors = GetWordTermErrors(wordHandle, apiResponse, text);
+
+                    Marshal.ReleaseComObject(wordApp);
+                }
+                catch (Exception ex)
+                {
+                    System.Windows.MessageBox.Show($"Error accessing Word: {ex.Message}");
+                    return;
+                }
             }
-            foreach (var error in errors.SpellingErrors)
+            else if (_notepadProcessId.HasValue)
             {
-                ReplaceWord(error.suggestions.FirstOrDefault() , error.startIndex , error.endIndex);
+                IntPtr notepadHandle = FindNotepadWindow();
+                if (notepadHandle == IntPtr.Zero)
+                {
+                    System.Windows.MessageBox.Show("Failed to find Notepad window.");
+                    return;
+                }
+
+                IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
+                if (editHandle == IntPtr.Zero)
+                {
+                    System.Windows.MessageBox.Show("Failed to find Edit control in Notepad.");
+                    return;
+                }
+
+                text = GetNotepadContent(notepadHandle);
+                var apiResponse = await GetSpellCheckResultsAsync(text);
+
+                if (editHandle != IntPtr.Zero)
+                {
+                    errors.SpellingErrors = GetSpellingErrors(editHandle , apiResponse , text);
+                    errors.GrammarError = GetGrammarErrors(editHandle , apiResponse , text);
+                    errors.PhrasingErrors = GetPhrasingErrors(editHandle , apiResponse , text);
+                    errors.TafqitErrors = GetTafqitErrors(editHandle , apiResponse , text);
+                    errors.TermErrors = GetTermErrors(editHandle , apiResponse , text);
+                }
             }
-            foreach (var error in errors.GrammarError)
+            else
             {
-                ReplaceWord(error.suggestions.FirstOrDefault() , error.startIndex , error.endIndex);
+                System.Windows.MessageBox.Show("No supported text editor is currently active.");
+                return;
             }
-            foreach (var error in errors.PhrasingErrors)
+
+            // Sort all errors by their start index in descending order to avoid position shifting
+            var allErrors = new List<(string suggestion, int startIndex, int endIndex)>();
+
+            void AddErrors(IEnumerable<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> errorList)
             {
-                ReplaceWord(error.suggestions.FirstOrDefault() , error.startIndex , error.endIndex);
+                if (errorList != null)
+                {
+                    foreach (var error in errorList)
+                    {
+                        if (error.suggestions != null && error.suggestions.Any())
+                        {
+                            allErrors.Add((error.suggestions.First(), error.startIndex, error.endIndex));
+                        }
+                    }
+                }
             }
-            foreach (var error in errors.TafqitErrors)
+
+            AddErrors(errors.SpellingErrors);
+            AddErrors(errors.GrammarError);
+            AddErrors(errors.PhrasingErrors);
+            AddErrors(errors.TafqitErrors);
+            AddErrors(errors.TermErrors);
+
+            // Sort errors by start index in descending order to handle replacements from end to start
+            allErrors = allErrors.OrderByDescending(e => e.startIndex).ToList();
+
+            // Apply all replacements
+            foreach (var error in allErrors)
             {
-                ReplaceWord(error.suggestions.FirstOrDefault() , error.startIndex , error.endIndex);
+                if (!string.IsNullOrEmpty(error.suggestion))
+                {
+                    ReplaceWord(error.suggestion , error.startIndex , error.endIndex);
+                    // Add a small delay between replacements to ensure proper processing
+                    await Task.Delay(50);
+                }
             }
-            foreach (var error in errors.TermErrors)
-            {
-                ReplaceWord(error.suggestions.FirstOrDefault() , error.startIndex , error.endIndex);
-            }
+
             CheckForIncorrectWords();
         }
 
         private void ReplaceWord(string suggestion , int startIndex , int endIndex)
         {
-            if (_notepadProcessId == null)
+            if (_microsoftWordProcessId.HasValue)
             {
-                System.Windows.MessageBox.Show("Notepad process ID is not set.");
-                return;
-            }
+                try
+                {
+                    Application wordApp = (Application)SpellCheckerDemo.ReplaceMarshall.GetActiveObject("Word.Application");
+                    if (wordApp?.ActiveDocument != null)
+                    {
+                        Document doc = wordApp.ActiveDocument;
 
-            IntPtr notepadHandle = FindNotepadWindow();
-            if (notepadHandle == IntPtr.Zero)
+                        // Create a range that spans the text to be replaced
+                        Microsoft.Office.Interop.Word.Range range = doc.Range(startIndex , endIndex + 1);
+
+                        // Store the current selection
+                        Microsoft.Office.Interop.Word.Selection currentSelection = wordApp.Selection;
+
+                        // Select the text to be replaced
+                        range.Select();
+
+                        // Replace the text
+                        wordApp.Selection.TypeText(suggestion);
+
+                        // Restore the original selection
+                        if (currentSelection != null)
+                        {
+                            currentSelection.Select();
+                            Marshal.ReleaseComObject(currentSelection);
+                        }
+
+                        // Clean up COM objects
+                        Marshal.ReleaseComObject(range);
+                        Marshal.ReleaseComObject(doc);
+                        Marshal.ReleaseComObject(wordApp);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error replacing text in Word: {ex.Message}");
+                }
+            }
+            else if (_notepadProcessId.HasValue)
             {
-                System.Windows.MessageBox.Show("Failed to find Notepad window.");
-                return;
+                // Existing Notepad replacement code remains unchanged
+                IntPtr notepadHandle = FindNotepadWindow();
+                if (notepadHandle == IntPtr.Zero)
+                {
+                    System.Windows.MessageBox.Show("Failed to find Notepad window.");
+                    return;
+                }
+
+                IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
+                if (editHandle == IntPtr.Zero)
+                {
+                    System.Windows.MessageBox.Show("Failed to find Edit control in Notepad.");
+                    return;
+                }
+
+                // Select the incorrect word
+                NativeMethods.SendMessage(editHandle , NativeMethods.EM_SETSEL , (IntPtr)startIndex , (IntPtr)( endIndex + 1 ));
+
+                // Replace the selection with the suggestion
+                foreach (char c in suggestion)
+                {
+                    NativeMethods.SendMessage(editHandle , NativeMethods.WM_CHAR , (IntPtr)c , IntPtr.Zero);
+                }
             }
-
-            IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
-            if (editHandle == IntPtr.Zero)
-            {
-                System.Windows.MessageBox.Show("Failed to find Edit control in Notepad.");
-                return;
-            }
-
-            // Bring Notepad to the foreground
-            NativeMethods.SetForegroundWindow(notepadHandle);
-
-            // Select the incorrect word
-            NativeMethods.SendMessage(editHandle , NativeMethods.EM_SETSEL , (IntPtr)startIndex , (IntPtr)endIndex+1);
-
-            // Replace the selection with the suggestion
-            foreach (char c in suggestion)
-            {
-                NativeMethods.SendMessage(editHandle , NativeMethods.WM_CHAR , (IntPtr)c , IntPtr.Zero);
-            }
-
-            // Update our internal text representation
-            //_allText.Remove(startIndex , endIndex - startIndex);
-            //_allText.Insert(startIndex , suggestion);
         }
 
         private IntPtr FindNotepadWindow()
@@ -205,7 +307,29 @@ namespace KeyboardTrackingApp
 
         private async void CheckForIncorrectWords()
         {
-            string text = _allText.ToString();
+            string text;
+
+            // Get content based on active application
+            if (_microsoftWordProcessId.HasValue)
+            {
+                text = GetMicrosoftWordContent();
+            }
+            else if (_notepadProcessId.HasValue)
+            {
+                text = _allText.ToString();
+            }
+            else
+            {
+                return;
+            }
+
+            if (string.IsNullOrEmpty(text))
+            {
+                UpdateErrorCount(0);
+                _overlay.DrawUnderlines(new ErrorsUnderlines());
+                return;
+            }
+
             var apiResponse = await GetSpellCheckResultsAsync(text);
             if (apiResponse is null)
                 return;
@@ -216,29 +340,146 @@ namespace KeyboardTrackingApp
                 Console.WriteLine("No flagged tokens found or API response was null.");
                 return;
             }
+
             ErrorsUnderlines errors = new ErrorsUnderlines();
 
-            IntPtr notepadHandle = NativeMethods.GetForegroundWindow();
-            IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
-
-            if (editHandle != IntPtr.Zero)
+            if (_microsoftWordProcessId.HasValue)
             {
-                errors.SpellingErrors = GetSpellingErrors(editHandle,apiResponse,text);
-                errors.GrammarError = GetGrammarErrors(editHandle,apiResponse, text);
-                errors.PhrasingErrors = GetPhrasingErrors(editHandle, apiResponse, text);
-                errors.TafqitErrors = GetTafqitErrors(editHandle,apiResponse, text);
-                errors.TermErrors = GetTermErrors(editHandle,apiResponse, text);
+                Application wordApp = null;
+                try
+                {
+                    wordApp = (Application)SpellCheckerDemo.ReplaceMarshall.GetActiveObject("Word.Application");
+                    if (wordApp != null && wordApp.ActiveDocument != null)
+                    {
+                        var activeWindow = wordApp.ActiveWindow;
+                        if (activeWindow != null)
+                        {
+                            // Get the window handle for Word
+                            IntPtr wordHandle = new IntPtr(activeWindow.Hwnd);
+
+                            errors.SpellingErrors = GetWordSpellingErrors(wordHandle , apiResponse , text);
+                            //errors.GrammarError = GetWordGrammarErrors(wordHandle , apiResponse , text);
+                            //errors.PhrasingErrors = GetWordPhrasingErrors(wordHandle , apiResponse , text);
+                            //errors.TafqitErrors = GetWordTafqitErrors(wordHandle , apiResponse , text);
+                            //errors.TermErrors = GetWordTermErrors(wordHandle , apiResponse , text);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error accessing Word: {ex.Message}");
+                }
+                finally
+                {
+                    if (wordApp != null)
+                    {
+                        Marshal.ReleaseComObject(wordApp);
+                    }
+                }
+            }
+            else if (_notepadProcessId.HasValue)
+            {
+                IntPtr notepadHandle = NativeMethods.GetForegroundWindow();
+                IntPtr editHandle = NativeMethods.FindWindowEx(notepadHandle , IntPtr.Zero , "Edit" , null);
+
+                if (editHandle != IntPtr.Zero)
+                {
+                    errors.SpellingErrors = GetSpellingErrors(editHandle , apiResponse , text);
+                    errors.GrammarError = GetGrammarErrors(editHandle , apiResponse , text);
+                    errors.PhrasingErrors = GetPhrasingErrors(editHandle , apiResponse , text);
+                    errors.TafqitErrors = GetTafqitErrors(editHandle , apiResponse , text);
+                    errors.TermErrors = GetTermErrors(editHandle , apiResponse , text);
+                }
             }
 
             System.Windows.Application.Current.Dispatcher.Invoke(() =>
             {
-                var count = errors.SpellingErrors.Count + errors.GrammarError.Count + errors.PhrasingErrors.Count + errors.TafqitErrors.Count + errors.TermErrors.Count;
+                var count = errors.SpellingErrors.Count + errors.GrammarError.Count +
+                            errors.PhrasingErrors.Count + errors.TafqitErrors.Count +
+                            errors.TermErrors.Count;
                 _overlay.DrawUnderlines(errors);
                 UpdateErrorCount(count);
             });
         }
 
         #region GetErrors
+        private List<(System.Windows.Point screenPosition, double width, string incorrectWord,
+            List<string> suggestions, int startIndex, int endIndex)> GetWordSpellingErrors(
+            IntPtr wordHandle , ApiResponse apiResponse , string text)
+        {
+            var errors = new List<(System.Windows.Point, double, string, List<string>, int, int)>();
+
+            try
+            {
+                Application wordApp = (Application)SpellCheckerDemo.ReplaceMarshall.GetActiveObject("Word.Application");
+                if (wordApp?.ActiveDocument == null) return errors;
+
+                foreach (var flaggedToken in apiResponse.spellCheckResponse.results.flagged_tokens)
+                {
+                    int startIndex = flaggedToken.start_index;
+                    int endIndex = flaggedToken.end_index;
+
+                    if (startIndex < 0 || startIndex >= text.Length || endIndex > text.Length || endIndex <= startIndex)
+                        continue;
+
+                    string incorrectWord = text.Substring(startIndex , endIndex - startIndex);
+                    var range = wordApp.ActiveDocument.Range(startIndex , endIndex);
+
+                    // Get screen coordinates for the range
+                    var pointsLeft = range.Information[Microsoft.Office.Interop.Word.WdInformation.wdHorizontalPositionRelativeToPage];
+                    var pointsTop = range.Information[Microsoft.Office.Interop.Word.WdInformation.wdVerticalPositionRelativeToPage];
+
+                    // Convert points to pixels
+                    double pixelsLeft = PointsToPixels(Convert.ToDouble(pointsLeft));
+                    double pixelsTop = PointsToPixels(Convert.ToDouble(pointsTop));
+
+                    // Calculate width using the font size and text length
+                    float fontSize = range.Font.Size;
+                    // Approximate width calculation based on font size and character count
+                    double approximateWidth = PointsToPixels(fontSize * incorrectWord.Length * 0.6);  // 0.6 is an average character width factor
+
+                    // Get the window position
+                    NativeMethods.POINT clientPoint = new NativeMethods.POINT
+                    {
+                        X = (int)pixelsLeft ,
+                        Y = (int)pixelsTop
+                    };
+                    NativeMethods.ClientToScreen(wordHandle , ref clientPoint);
+
+                    List<string> suggestions = flaggedToken.suggestions.Select(s => s.text).ToList();
+                    Point wpfPoint = ScreenToWpf(new Point(clientPoint.X , clientPoint.Y));
+
+                    errors.Add((
+                        new System.Windows.Point(wpfPoint.X , wpfPoint.Y + 20),
+                        approximateWidth,
+                        incorrectWord,
+                        suggestions,
+                        startIndex,
+                        endIndex
+                    ));
+
+                    Marshal.ReleaseComObject(range);
+                }
+
+                Marshal.ReleaseComObject(wordApp.ActiveDocument);
+                Marshal.ReleaseComObject(wordApp);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in GetWordSpellingErrors: {ex.Message}");
+            }
+
+            return errors;
+        }
+
+        // Helper method to convert points to pixels
+        private double PointsToPixels(double points)
+        {
+            // 1 point = 1/72 inch
+            // Assuming 96 DPI (standard Windows resolution)
+            return points * ( 96.0 / 72.0 );
+        }
+
         private List<(System.Windows.Point screenPosition, double width, string incorrectWord, List<string> suggestions, int startIndex, int endIndex)> GetSpellingErrors(
     IntPtr editHandle ,
     ApiResponse apiResponse,
@@ -552,6 +793,11 @@ namespace KeyboardTrackingApp
                         _notepadProcessId = GetProcessId(foregroundWindow);
                         ReadWindowContent(foregroundWindow);
                     }
+                    else if (IsMicroSoftWord(newWindowTitle))
+                    {
+                        _microsoftWordProcessId = GetProcessId(foregroundWindow);
+                        ReadWordContent();
+                    }
                 }
 
                 else
@@ -565,6 +811,123 @@ namespace KeyboardTrackingApp
                 // Update the current screen
                 _currentScreen = Screen.FromHandle(foregroundWindow);
             }
+        }
+        private void ProcessCheckTimer_Tick(object sender , EventArgs e)
+        {
+            if (_notepadProcessId.HasValue)
+            {
+                var process = Process.GetProcesses().FirstOrDefault(p => p.Id == _notepadProcessId.Value);
+                if (process == null)
+                {
+                    _allText.Clear();
+                    _notepadProcessId = null;
+                }
+            }
+            else if (_microsoftWordProcessId.HasValue)
+            {
+
+                var wordProcess = Process.GetProcesses().FirstOrDefault(p => p.Id == _microsoftWordProcessId.Value);
+                if (wordProcess == null)
+                {
+                    _allText.Clear();
+                    _microsoftWordProcessId = null;
+                }
+            }
+        }
+
+        private bool IsMicroSoftWord(string windowTitle)
+        {
+            return windowTitle.EndsWith(" - Word");
+        }
+
+        private void ReadWordContent()
+        {
+            Application wordApp = null;
+            Document activeDocument = null;
+
+            try
+            {
+                // Attempt to get the existing instance of Word
+                try
+                {
+                    wordApp = (Application)SpellCheckerDemo.ReplaceMarshall.GetActiveObject("Word.Application");
+                }
+                catch (COMException)
+                {
+                    Console.WriteLine("Microsoft Word is not running.");
+                    return;
+                }
+
+                // Access the active Word document
+                if (wordApp != null && wordApp.Documents.Count > 0)
+                {
+                    activeDocument = wordApp.ActiveDocument;
+                    StringBuilder sb = new StringBuilder();
+
+                    // Loop through each paragraph in the document
+                    foreach (Microsoft.Office.Interop.Word.Paragraph paragraph in activeDocument.Paragraphs)
+                    {
+                        sb.AppendLine(paragraph.Range.Text);
+                    }
+
+                    _allText.Clear();
+                    _allText.Append(sb.ToString());
+                    _currentWord.Clear();
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        CheckForIncorrectWords(); // Custom method to highlight specific words
+                    });
+
+                    Console.WriteLine("Read content from Word: " + _allText.ToString());
+                }
+                else
+                {
+                    Console.WriteLine("No active Word document found.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error reading Word content: {ex.Message}");
+            }
+        }
+
+        private string GetMicrosoftWordContent()
+        {
+            try
+            {
+                Application wordApp = null;
+                Document activeDocument = null;
+                try
+                {
+                    wordApp = (Application)SpellCheckerDemo.ReplaceMarshall.GetActiveObject("Word.Application");
+                }
+                catch (COMException)
+                {
+                    Console.WriteLine("Microsoft Word is not running.");
+                    return null;
+                }
+
+                // Access the active Word document
+                if (wordApp != null && wordApp.Documents.Count > 0)
+                {
+                    activeDocument = wordApp.ActiveDocument;
+                    StringBuilder sb = new StringBuilder();
+
+                    // Loop through each paragraph in the document
+                    foreach (Microsoft.Office.Interop.Word.Paragraph paragraph in activeDocument.Paragraphs)
+                    {
+                        sb.AppendLine(paragraph.Range.Text);
+                    }
+                    return sb.ToString();
+                }
+            }
+            catch (Exception)
+            {
+                Console.WriteLine("Microsoft Word is not running.");
+            }
+            return null;
+
         }
 
         private void UpdateOverlayPosition()
@@ -589,20 +952,6 @@ namespace KeyboardTrackingApp
             if (source == null) return screenPoint;
 
             return source.CompositionTarget.TransformFromDevice.Transform(screenPoint);
-        }
-
-
-        private void ProcessCheckTimer_Tick(object sender , EventArgs e)
-        {
-            if (_notepadProcessId.HasValue)
-            {
-                var process = Process.GetProcesses().FirstOrDefault(p => p.Id == _notepadProcessId.Value);
-                if (process == null)
-                {
-                    _allText.Clear();
-                    _notepadProcessId = null;
-                }
-            }
         }
 
         private int? GetProcessId(IntPtr windowHandle)
@@ -741,6 +1090,20 @@ namespace KeyboardTrackingApp
                 {
                     _allText.Clear();
                     _allText.Append(notepadContent);
+                    _currentWord.Clear();
+                    Dispatcher.Invoke(() =>
+                    {
+                        CheckForIncorrectWords();
+                    });
+                }
+            }
+            else if (_microsoftWordProcessId.HasValue)
+            {
+                string wordContent = GetMicrosoftWordContent();
+                if (wordContent != _allText.ToString())
+                {
+                    _allText.Clear();
+                    _allText.Append(wordContent);
                     _currentWord.Clear();
                     Dispatcher.Invoke(() =>
                     {
